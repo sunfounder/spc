@@ -1,0 +1,14 @@
+# https://www.freedesktop.org/software/systemd/man/systemd.service.html
+[Unit]
+Description=UPS Case Auto Control
+After=multi-user.target # Need to start last to avoid gpio being occupied
+
+[Service]
+# ExecStartPre=/bin/sleep 15
+Type=simple
+WorkingDirectory=/opt/spc-core
+ExecStart=python3 /opt/spc-core/ups_case_auto
+PrivateTmp=True
+
+[Install]
+WantedBy=multi-user.target

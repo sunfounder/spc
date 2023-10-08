@@ -1,0 +1,132 @@
+#!/usr/bin/python3
+from spc import SPC, __version__
+import time
+import os
+import subprocess
+import sys
+
+# variables
+# =================================================================
+LOG_FILE = '/opt/spc-core/log'
+NORMAL_REFRESH_INTERVAL = 0.1  # s
+RETRY_REFRESH_INTERVAL = 3  # s
+
+fan_speed = 0
+last_fan_speed = 0
+last_shutdown_request = 0
+retry_flag = False
+
+# temperature_speed_mapping = [
+#     (60, 80),  # temp < 60, fan speed 80, temp > 60, fan speed 100
+#     (55, 65),  # temp < 55, fan speed 65,
+#     (50, 50),  # temp < 50, fan speed 50,
+#     (45, 25),  # temp < 45, fan speed 25,
+#     (40, 0),  # temp < 40, fan speed 0
+# ]
+
+temperature_speed_mapping = [
+    (60, 75),  # temp < 60, fan speed 80, temp > 60, fan speed 100
+    (55, 50),  # temp < 55, fan speed 75,
+    (50, 25),  # temp < 50, fan speed 25,
+    (42, 0),  # temp < 42, fan speed 0
+]
+
+
+# utils
+# =================================================================
+def log(msg: str = None, level='DEBUG', end='\n', flush=False, timestamp=True):
+    with open(f'{LOG_FILE}', 'a+') as log_file:
+        if timestamp == True:
+            _time = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
+            ct = time.time()
+            _msecs = '%03d ' % ((ct - int(ct)) * 1000)
+            print('%s,%s[%s] %s' % (_time, _msecs, level, msg),
+                  end=end,
+                  flush=flush,
+                  file=log_file)
+            print('%s,%s[%s] %s' % (_time, _msecs, level, msg),
+                  end=end,
+                  flush=flush,
+                  file=sys.stdout)
+        else:
+            print('%s' % msg, end=end, flush=flush, file=log_file)
+            print('%s' % msg, end=end, flush=flush, file=sys.stdout)
+
+
+# Return CPU temperature as a character string
+def getCPUtemperature():
+    cmd = 'cat /sys/class/thermal/thermal_zone0/temp'
+    try:
+        temp = int(subprocess.check_output(cmd, shell=True).decode())
+        return round(temp / 1000, 2)
+    except Exception as e:
+        print('getCPUtemperature: %s' % e)
+        return 0.0
+
+
+# main
+# =================================================================
+def main():
+    global fan_speed, last_fan_speed, last_shutdown_request, retry_flag
+
+    log(f'{"-"*20}', level='', timestamp=False)
+    log(f'version: {__version__}', level='', timestamp=False)
+
+    spc = SPC()
+
+    while True:
+        try:
+            # --- shutdown request ---
+            shutdown_request = spc.read_shutdown_request()
+            # print(shutdown_request)
+            if last_shutdown_request != shutdown_request:
+                last_shutdown_request = shutdown_request
+                log(f'shutdown_request code: {shutdown_request}', level='INFO')
+            if shutdown_request == 1:
+                log('Low power shutdown.', level='INFO')
+                os.system('sudo poweroff')
+                time.sleep(1)
+            elif shutdown_request == 2:
+                log('Manual button shutdown.', level='INFO')
+                os.system('sudo poweroff')
+                time.sleep(1)
+
+            # --- fan control ---
+            cpu_temp = getCPUtemperature()
+            for i, (temp, speed) in enumerate(temperature_speed_mapping):
+                if cpu_temp > temp:
+                    if i == 0:
+                        fan_speed = 100
+                    else:
+                        _, fan_speed = temperature_speed_mapping[i - 1]
+                    break
+                elif cpu_temp > temp - 2:
+                    # no change speed
+                    break
+
+            # print(f'cpu_temp: {cpu_temp}, fan_speed: {fan_speed}')
+            #
+            if last_fan_speed != fan_speed:
+                last_fan_speed = fan_speed
+                spc.set_fan_speed(fan_speed)
+                log(f'cpu_temp: {cpu_temp} \'C, set fan speed: {fan_speed}',
+                    level='INFO')
+
+            # delay
+            time.sleep(NORMAL_REFRESH_INTERVAL)
+            retry_flag = False
+        except Exception as e:
+            if retry_flag == False:
+                retry_flag = True
+                log(f'{e}', level='ERROR')
+                log(f'retrying ...', level='DEBUG')
+            # retrying
+            time.sleep(RETRY_REFRESH_INTERVAL)
+            continue
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(e)

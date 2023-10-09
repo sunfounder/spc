@@ -51,6 +51,18 @@ def print_usage():
     quit()
 
 
+# Return CPU temperature as a character string
+def getCPUtemperature():
+    import subprocess
+    cmd = 'cat /sys/class/thermal/thermal_zone0/temp'
+    try:
+        temp = int(subprocess.check_output(cmd, shell=True).decode())
+        return round(temp / 1000, 2)
+    except Exception as e:
+        print('getCPUtemperature: %s' % e)
+        return 0.0
+
+
 def monitor(spc):
     while True:
         print("\033[H\033[J", end='')  # clear terminal windows
@@ -73,6 +85,8 @@ def print_all_data_once(spc):
 def print_all_data_once_json(spc):
     import json
     data_buffer = spc.read_all()
+    cpu_temp = getCPUtemperature()
+    data_buffer['cpu_temp'] = [cpu_temp, '\'C']
     json_str = json.dumps(data_buffer)
     print(json_str)
 

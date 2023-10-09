@@ -2,6 +2,56 @@
 from smbus import SMBus
 import struct
 import time
+from configparser import ConfigParser
+import os
+
+
+#
+# =================================================================
+def run_command(cmd):
+    import subprocess
+    p = subprocess.Popen(cmd,
+                         shell=True,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+    result = p.stdout.read().decode()
+    status = p.poll()
+    return status, result
+
+
+#
+# =================================================================
+config_file = '/opt/spc/config'
+fan_switch = False
+fan_speed = 0
+fan_mode = 'auto'  # auto, quiet, normal, performance
+
+config = ConfigParser()
+# check config_file
+if not os.path.exists(config_file):
+    print('Configuration file does not exist, recreating ...')
+    # create config_file
+    status, result = run_command(cmd=f'sudo touch {config_file}' +
+                                 f' && sudo chmod 774 {config_file}')
+    if status != 0:
+        print('create config_file failed:\n%s' % result)
+        raise Exception(result)
+
+# read config_file
+try:
+    config.read(config_file)
+    fan_switch = bool(config['all']['fan_switch'])
+    fan_speed = int(config['all']['fan_speed'])
+    fan_mode = str(config['all']['fan_mode'])
+except Exception as e:
+    print(f"read config error: {e}")
+    config['all'] = {
+        'fan_switch': fan_switch,
+        'fan_speed': fan_speed,
+        'fan_mode': fan_mode,
+    }
+    with open(config_file, 'w') as f:
+        config.write(f)
 
 # ups case hat
 # =================================================================
@@ -197,9 +247,44 @@ class SPC():
         self.i2c_dev.write_i2c_block_data(self.addr, 0, value)
 
     def set_fan_speed(self, speed):
-        if speed < 0:
+        global fan_speed
+
+        if speed <= 0:
             speed = 0
+            self._write_data('fan_speed', [0])
+            return
         elif speed > 100:
             speed = 100
 
+        fan_speed = speed
+        config['all']['fan_speed'] = str(fan_speed)
+        with open(config_file, 'w') as f:
+            config.write(f)
         self._write_data('fan_speed', [speed])
+
+    def set_fan_state(self, switch: bool):
+        if switch:
+            print(config['all']['fan_speed'])
+            speed = int(config['all']['fan_speed'])
+            self.set_fan_speed(speed)
+        else:
+            self.set_fan_speed(0)
+
+    def set_fan_mode(self, mode: str):
+        speed = fan_speed
+        if mode == 'quiet':
+            speed = 35
+        elif mode == 'normal':
+            speed = 65
+        elif mode == 'performance':
+            speed = 100
+        else:
+            mode = 'auto'
+            speed = 0
+
+        fan_mode = mode
+        config['all']['fan_mode'] = str(fan_mode)
+        with open(config_file, 'w') as f:
+            config.write(f)
+
+        self.set_fan_speed(speed)

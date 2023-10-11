@@ -5,9 +5,9 @@ After=multi-user.target # Need to start last to avoid gpio being occupied
 
 [Service]
 # ExecStartPre=/bin/sleep 15
-Type=simple
-WorkingDirectory=/opt/spc-core
-ExecStart=python3 /opt/spc-core/ups_case_auto
+Type=forking
+WorkingDirectory=/opt/spc
+ExecStart=python3 /opt/spc/spc_server start
 PrivateTmp=True
 
 [Install]

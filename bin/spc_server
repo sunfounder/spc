@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+from spc.config import Config
+import spc.utils as utils
+
+WORKING_DIR = "/opt/spc"
+utils.SCRIPT_NAME = 'SERVER'
+config = Config()
+
+parser = argparse.ArgumentParser(description='SPC Service')
+parser.add_argument('command', choices=['start', 'stop', 'restart'], help='Command')
+parser.add_argument('--mqtt-host', default=config.get('mqtt', 'host'), help='MQTT host')
+parser.add_argument('--mqtt-port', default=config.getint('mqtt', 'port'), help='MQTT port')
+parser.add_argument('--mqtt-username', default=config.get('mqtt', 'username'), help='MQTT username')
+parser.add_argument('--mqtt-password', default=config.get('mqtt', 'password'), help='MQTT password')
+parser.add_argument('--ssl', action=argparse.BooleanOptionalAction, default=config.getboolean('dashboard', 'ssl'), help='SSL enabled')
+parser.add_argument('--ssl-ca-cert', default=config.get('dashboard', 'ssl_ca_cert'), help='SSL CA cert')
+parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), help='SSL cert')
+
+args = parser.parse_args()
+
+def runcommand(command):
+    utils.log(f'Run command: {command}', level="INFO")
+    os.system(command)
+
+def start():
+    os.chdir(WORKING_DIR)
+    runcommand(f'python3 spc_mqtt_client -H {args.mqtt_host} -p {args.mqtt_port} -u {args.mqtt_username} -P {args.mqtt_password} &')
+    runcommand(f'python3 spc_auto &')
+    runcommand(f'python3 spc_dashboard {"--ssl" if args.ssl else "--no-ssl"} --ssl-ca-cert {args.ssl_ca_cert} --ssl-cert {args.ssl_cert} &')
+
+def stop_process(name):
+    pid = os.popen(f"ps -ef | grep '{name}' | awk '{{print $2}}'").read()
+    pid = " ".join(pid.split('\n')[:-2])
+    command = f'kill {pid}'
+    runcommand(command)
+
+def stop():
+    stop_process('python3 spc_mqtt_client')
+    stop_process('python3 spc_auto')
+    stop_process('python3 spc_dashboard')
+
+if args.command == 'start':
+    start()
+    utils.log('SPC Started', level="INFO")
+elif args.command == 'stop':
+    stop()
+    utils.log('SPC Stopped', level="INFO")
+elif args.command == 'restart':
+    stop()
+    start()
+    utils.log('SPC Restarted', level="INFO")

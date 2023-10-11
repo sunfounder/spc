@@ -1,0 +1,18 @@
+[auto]
+fan_state = True
+fan_speed = 65
+fan_mode = auto
+refresh_interval = 1
+retry_interval = 3
+
+[mqtt]
+host = core-mosquitto
+port = 1883
+username = mqtt
+password = mqtt
+
+[dashboard]
+port = 34001
+ssl = False
+ssl_ca_cert = ''
+ssl_cert = ''

@@ -1,11 +1,29 @@
 #!/usr/bin/env python3
-import os
+
 import sys
+from spc import __version__
+import os
 import time
 import threading
+import argparse
 
-sys.path.append('./spc')
-from version import __version__
+
+DEPENDENCIES = [
+    "python3-smbus",
+    "unzip",
+]
+
+SPC_DASHBOARD_DOWNLOAD_LINK = "https://github.com/sunfounder/spc-dashboard/releases/latest/download/spc-dashboard.zip"
+
+parser = argparse.ArgumentParser(description='Install script for SPC')
+parser.add_argument('--no-dep', action='store_true',
+                    help='Do not install dependencies')
+parser.add_argument('--skip-reboot', action='store_true',
+                    help='Do not reboot after install')
+parser.add_argument('--disable-autostart', action='store_true',
+                    help='Do not start SPC automatically')
+parser.add_argument('--mqtt-client', action=argparse.BooleanOptionalAction, default=False, help='Enable MQTT client or not')
+args = parser.parse_args()
 
 if os.geteuid() != 0:
     print("Script must be run as root. Try 'python3 install.py'")
@@ -15,9 +33,10 @@ errors = []
 
 user_name = os.getlogin()
 
-
 #
 # =================================================================
+
+
 def run_command(cmd=""):
     import subprocess
     p = subprocess.Popen(cmd,
@@ -28,7 +47,6 @@ def run_command(cmd=""):
     p.wait()
     result = p.stdout.read()
     status = p.poll()
-    # print(status, result)
     return status, result
 
 
@@ -88,7 +106,7 @@ class Config(object):
     '''
         To setup /boot/config.txt (Raspbian, Kali OSMC, etc)
         /boot/firmware/config.txt (Ubuntu)
-     
+
     '''
     DEFAULT_FILE_1 = "/boot/config.txt"  # raspbian
     DEFAULT_FILE_2 = "/boot/firmware/config.txt"  # ubuntu
@@ -157,9 +175,14 @@ class Config(object):
 def install():
     print(f"SPC-Core {__version__} install process starts for {user_name}:\n")
 
-    options = []
-    if len(sys.argv) > 1:
-        options = sys.argv[1:]
+    # ================
+    if not args.no_dep:
+        print("Install dependencies")
+        do(msg="update", cmd='apt-get update')
+        do(msg="install dependencies",
+            cmd='apt-get install -y ' + ' '.join(DEPENDENCIES))
+        do(msg="install python requirements",
+            cmd='pip3 install -r requirements.txt')
 
     # ================
     print("Config gpio")
@@ -178,36 +201,61 @@ def install():
                value="13")
 
     # ================
-    print('install spc-core library')
+    print('Install spc library')
     do(msg="run setup file", cmd='python3 setup.py install')
-    do(msg="cleanup", cmd='rm -rf spc-core.egg-info')
+    do(msg="cleanup", cmd='rm -rf spc.egg-info')
 
     # ================
-    print('install spc-core auto control program')
-    auto_script_dir = "/opt/spc-core"
-    auto_script_path = "/opt/spc-core/spc_core_auto"
-    auto_script_file = "spc_core_auto"
-    auto_service_file = "spc_core_auto.service"
+    print('Install spc auto control program')
+    working_dir = "/opt/spc"
+    auto_script_file = "spc_auto"
+    mqtt_client_file = "spc_mqtt_client"
+    dashboard_script_file = "spc_dashboard"
+    spc_server_file = "spc_server"
+    service_config_file = "spc.service"
+    config_file = "config"
 
-    do(msg=f"check dir {auto_script_dir}",
-       cmd=f'mkdir -p {auto_script_dir}' +
-       f' && chmod -R 775 {auto_script_dir}' +
-       f' && chown -R {user_name}:{user_name} {auto_script_dir}')
+    do(msg=f"check dir {working_dir}",
+        cmd=f'mkdir -p {working_dir}' +
+        f' && chmod -R 775 {working_dir}' +
+        f' && chown -R {user_name}:{user_name} {working_dir}')
+    do(msg=f"copy {spc_server_file} file",
+        cmd=f'cp ./bin/{spc_server_file} {working_dir}/{spc_server_file}')
     do(msg=f"copy {auto_script_file} file",
-       cmd=f'cp ./bin/{auto_script_file} {auto_script_path}')
-    do(msg=f'copy {auto_service_file} file',
-       cmd=
-       f'cp ./bin/{auto_service_file} /usr/lib/systemd/system/{auto_service_file}'
-       )
+        cmd=f'cp ./bin/{auto_script_file} {working_dir}/{auto_script_file}')
+    do(msg=f"copy {mqtt_client_file} file",
+        cmd=f'cp ./bin/{mqtt_client_file} {working_dir}/{mqtt_client_file}')
+    do(msg=f"copy {dashboard_script_file} file",
+        cmd=f'cp ./bin/{dashboard_script_file} {working_dir}/{dashboard_script_file}')
+    do(msg=f"copy {dashboard_script_file} file",
+        cmd=f'cp ./bin/{dashboard_script_file} {working_dir}/{dashboard_script_file}')
+    do(msg=f'copy {service_config_file} file',
+        cmd=f'cp ./bin/{service_config_file} /usr/lib/systemd/system/{service_config_file}')
     do(msg="add excutable mode for service file",
-       cmd=f'chmod +x /usr/lib/systemd/system/{auto_service_file}')
-    do(msg='enable the service to auto-start at boot',
-       cmd='systemctl daemon-reload' +
-       f' && systemctl enable {auto_service_file}')
+        cmd=f'chmod +x /usr/lib/systemd/system/{service_config_file}')
+    do(msg=f'copy config file',
+        cmd=f'cp ./{config_file} {working_dir}/{config_file}')
+    if not args.disable_autostart:
+        do(msg='enable the service to auto-start at boot',
+           cmd='systemctl daemon-reload' +
+           f' && systemctl enable {service_config_file}')
+        do(msg=f'run the {service_config_file}',
+           cmd=f'systemctl restart {service_config_file}')
 
     # ================
-    do(msg=f'run the {auto_service_file}',
-       cmd=f'systemctl restart {auto_service_file}')
+    print('Download spc dashboard')
+    # cleanup www if exist
+    if os.path.exists(f'{working_dir}/www'):
+        do(msg=f"remove old spc dashboard",
+            cmd=f'rm -rf {working_dir}/www')
+    do(msg=f"download spc dashboard",
+        cmd=f'wget -O /tmp/spc-dashboard.zip {SPC_DASHBOARD_DOWNLOAD_LINK}')
+    do(msg=f"unzip spc dashboard",
+        cmd=f'unzip /tmp/spc-dashboard.zip -d /tmp/spc-dashboard')
+    do(msg=f"copy spc dashboard",
+        cmd=f'cp -r /tmp/spc-dashboard/* {working_dir}/www')
+    do(msg=f"remove tmp files",
+        cmd=f'rm -rf /tmp/spc-dashboard*')
 
     # check errors
     # ================

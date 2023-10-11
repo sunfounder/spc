@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+
+from spc import SPC, __version__
+from spc.config import Config
+import spc.utils as utils
+import time
+import os
+
+utils.SCRIPT_NAME = 'AUTO'
+config = Config()
+spc = SPC()
+
+refresh_interval = config.getint('auto', 'refresh_interval')
+retry_interval = config.getint('auto', 'retry_interval')
+fan_mode = config.get('auto', 'fan_mode')
+fan_state = config.getboolean('auto', 'fan_state')
+
+AUTO_FAN_LEVELS = [
+    {
+        "name": "OFF",
+        "low": 0,
+        "high": 55,
+        "percent": 0,
+    }, {
+        "name": "LOW",
+        "low": 45,
+        "high": 65,
+        "percent": 40,
+    }, {
+        "name": "MEDIUM",
+        "low": 55,
+        "high": 75,
+        "percent": 80,
+    }, {
+        "name": "HIGH",
+        "low": 65,
+        "high": 100,
+        "percent": 100,
+    },
+]
+
+last_shutdown_request = 0
+auto_fan_level = 0
+auto_fan_initial = True
+
+def fan_auto_control():
+    global auto_fan_level, auto_fan_initial
+    # --- fan control ---
+    cpu_temp = spc.read_cpu_temperature()
+    changed = False
+    direction = -1
+    new_level = auto_fan_level
+    if cpu_temp < AUTO_FAN_LEVELS[auto_fan_level]['low']:
+        new_level -= 1
+        changed = True
+        direction = "low"
+    elif cpu_temp > AUTO_FAN_LEVELS[auto_fan_level]['high']:
+        new_level += 1
+        changed = True
+        direction = "high"
+    
+    if changed or auto_fan_initial:
+        new_level = max(0, min(new_level, len(AUTO_FAN_LEVELS) - 1))
+        speed = AUTO_FAN_LEVELS[new_level]['percent']
+        spc.set_fan_speed(speed)
+        if auto_fan_initial:
+            utils.log(f'cpu temperature: {cpu_temp} \'C', level='INFO')
+        else:
+            utils.log(f'cpu temperature: {cpu_temp} \'C, {direction}er than {AUTO_FAN_LEVELS[auto_fan_level][direction]}', level='INFO')
+        utils.log(f'set fan level: {AUTO_FAN_LEVELS[new_level]["name"]}',level='INFO')
+        utils.log(f'set fan speed: {speed}',level='INFO')
+        auto_fan_level = new_level
+        auto_fan_initial = False
+
+def shutdown_control():
+    global last_shutdown_request
+    # --- shutdown request ---
+    shutdown_request = spc.read_shutdown_request()
+    # print(shutdown_request)
+    if last_shutdown_request != shutdown_request:
+        last_shutdown_request = shutdown_request
+        utils.log(f'shutdown_request code: {shutdown_request}', level='INFO')
+    if shutdown_request == 1:
+        utils.log('Low power shutdown.', level='INFO')
+        os.system('sudo poweroff')
+        time.sleep(1)
+    elif shutdown_request == 2:
+        utils.log('Manual button shutdown.', level='INFO')
+        os.system('sudo poweroff')
+        time.sleep(1)
+
+# main
+# =================================================================
+def main():
+    retry_flag = False
+
+    utils.log(f'SPC auto started', level='INFO')
+
+    while True:
+        try:
+            shutdown_control()
+            if fan_state and fan_mode == 'auto':
+                fan_auto_control()
+            time.sleep(refresh_interval)
+            retry_flag = False
+        except Exception as e:
+            if retry_flag == False:
+                retry_flag = True
+                utils.log(f'{e}', level='ERROR')
+                utils.log(f'retrying ...', level='DEBUG')
+            # retrying
+            time.sleep(retry_interval)
+            continue
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(e)

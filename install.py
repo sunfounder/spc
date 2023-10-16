@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from spc import __version__
+from spc.version import __version__
 import os
 import time
 import threading

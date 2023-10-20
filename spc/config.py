@@ -6,10 +6,11 @@ class Config:
     default_config_file = "/opt/spc/config"
     default_values = {
         "auto": {
-            "fan_mode": "auto",
             "fan_state": True,
-            "interval": 5,
-            "enable": True
+            "fan_speed": 65,
+            "fan_mode": "auto",
+            "refresh_interval": 1,
+            "retry_interval": 3,
         },
         "mqtt": {
             "host": "core-mosquitto",

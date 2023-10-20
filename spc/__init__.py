@@ -3,24 +3,40 @@ from .spc import SPC
 import time
 
 def monitor(spc):
-    while True:
-        print("\033[H\033[J", end='')  # clear terminal windows
-        print_all_data_once(spc)
-        time.sleep(0.5)
+    print("\033[H\033[J", end='')  # clear terminal windows
+    print('\033[?25l', end='', flush=True) # cursor invisible
+    try:
+        while True:
+            print_all_data_once(spc, isclear=True)
+            time.sleep(0.5)
+    except:
+        print('\033[?25H', end='', flush=True) # cursor visible
 
-def print_all_data_once(spc):
+
+def print_all_data_once(spc, isclear=False):
     data_buffer = spc.read_all()
-    print(f"Battery voltage:    {data_buffer['battery_voltage']} mV")
-    print(f"Battery current:    {data_buffer['battery_current']} mA")
-    print(f"Battery percentage: {data_buffer['battery_percentage']} %")
-    print(f"USB voltage:        {data_buffer['usb_voltage']} mV")
-    print(f"USB current:        {data_buffer['usb_current']} mA")
-    print(f"Output voltage:     {data_buffer['output_voltage']} mV")
-    print(f"Output current:     {data_buffer['output_current']} mA")
-    print(f"Charging:           {'Charging' if data_buffer['is_charging'] else 'Not charging'}")
-    print(f"Power source:       {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'USB'}")
-    print(f"USB plugged in:     {'Plugged in' if data_buffer['is_usb_plugged_in'] else 'Unplugged'}")
-    print(f"Fan speed:          {data_buffer['fan_speed']} %")
+    _clear_code = ''
+    if isclear:
+        _clear_code = '\033[K' # clear one line
+
+    if isclear:
+        print(f"\033[{len(data_buffer)}A", end='\r')  # moves cursor up x lines
+
+    print(f"{_clear_code}Battery voltage:          {data_buffer['battery_voltage']} mV")
+    print(f"{_clear_code}Battery current:          {data_buffer['battery_current']} mA")
+    print(f"{_clear_code}Battery percentage:       {data_buffer['battery_percentage']} %")
+    print(f"{_clear_code}USB voltage:              {data_buffer['usb_voltage']} mV")
+    print(f"{_clear_code}USB current:              {data_buffer['usb_current']} mA")
+    print(f"{_clear_code}Output voltage:           {data_buffer['output_voltage']} mV")
+    print(f"{_clear_code}Output current:           {data_buffer['output_current']} mA")
+    print(f"{_clear_code}Charging:                 {'Charging' if data_buffer['is_charging'] else 'Not charging'}")
+    print(f"{_clear_code}Power source:             {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'USB'}")
+    print(f"{_clear_code}USB plugged in:           {'Plugged in' if data_buffer['is_usb_plugged_in'] else 'Unplugged'}")
+    print(f"{_clear_code}Fan speed:                {data_buffer['fan_speed']} %")
+
+    # if isclear:
+    #     print(f"\033[{len(data_buffer)}A", end='\r')  # moves cursor up x lines
+
 
 def print_all_data_once_json(spc):
     import json

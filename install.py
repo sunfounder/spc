@@ -257,6 +257,12 @@ def install():
     do(msg=f"remove tmp files",
         cmd=f'rm -rf /tmp/spc-dashboard*')
 
+
+    # ================
+    print('change working_dir permissions')
+    do(msg=f"chown -R {user_name}:{user_name} {working_dir}",
+        cmd=f'chown -R {user_name}:{user_name} {working_dir}')
+
     # check errors
     # ================
     if len(errors) == 0:

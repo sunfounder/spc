@@ -9,8 +9,13 @@ def monitor(spc):
         while True:
             print_all_data_once(spc, isclear=True)
             time.sleep(0.5)
-    except:
-        print('\033[?25H', end='', flush=True) # cursor visible
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        print(f"\n{e}")  # clear terminal windows
+    finally:
+        print('\033[?25h') # cursor visible
+
 
 
 def print_all_data_once(spc, isclear=False):

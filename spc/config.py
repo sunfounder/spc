@@ -1,16 +1,25 @@
 import configparser
 import os
-from .utils import run_command
+from .utils import run_command, Logger
+
+log = Logger(script_name="config")
 
 class Config:
     default_config_file = "/opt/spc/config"
     default_values = {
         "auto": {
+            "reflash_interval": 1,
+            "retry_interval": 3,
+            "fan_mode": "auto",
             "fan_state": True,
             "fan_speed": 65,
-            "fan_mode": "auto",
-            "refresh_interval": 1,
-            "retry_interval": 3,
+            "temperature_unit": "C",
+            "rgb_switch": True,
+            "rgb_style": 'breath',  # 'breath', 'leap', 'flow', 'raise_up', 'colorful'
+            "rgb_color": "#0a1aff",
+            "rgb_speed": 50,
+            "rgb_pwm_frequency": 1000,
+            "rgb_pin": 10,  # 10, 12, 21
         },
         "mqtt": {
             "host": "core-mosquitto",
@@ -23,7 +32,7 @@ class Config:
             "ssl": False,
             "ssl_ca_cert": "",
             "ssl_cert": ""
-        }
+        },
     }
 
     def __init__(self, config_file=default_config_file):
@@ -48,9 +57,11 @@ class Config:
         except configparser.NoSectionError:
             self.config[section] = {}
             self.set(section, key, default)
+            log(f'NoSectionError: {section} {key} {default}', level='DEBUG')
             return default
         except configparser.NoOptionError:
             self.set(section, key, default)
+            log(f'NoOptionError: {section} {key} {default}', level='DEBUG')
             return default
 
     def getboolean(self, section, key, default=None):

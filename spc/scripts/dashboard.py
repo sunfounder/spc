@@ -4,13 +4,13 @@ import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 from typing import Any
-from spc import SPC
+from spc.spc import SPC
 import json
 
 from spc.config import Config
-import spc.utils as utils
+from spc.utils import Logger
 
-utils.SCRIPT_NAME = 'DASHBOARD'
+log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
 
 spc = SPC()
@@ -64,7 +64,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 with open(f"{STATIC_URL}{filename}", 'rb') as file:
                     self.wfile.write(file.read())
             except FileNotFoundError:
-                utils.log('File not found: %s' % filename, level='ERROR')
+                log('File not found: %s' % filename, level='ERROR')
                 self.send_response(404)
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
@@ -112,12 +112,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         msg = format % args
-        utils.log(msg, level='INFO')
+        log(msg, level='INFO')
 
 server_address = ('', PORT)
 
 httpd = HTTPServer(server_address, RequestHandler)
-utils.log(f'SPC Dashboard running at http://0.0.0.0:{PORT}/', level='INFO')
+log(f'SPC Dashboard running at http://0.0.0.0:{PORT}/', level='INFO')
 
 # 启动服务器
 # os.chdir('/opt/spc/www')

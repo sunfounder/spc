@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spc"
+authors = [
+  { name="SunFounder", email="service@sunfounder.com" },
+]
+description = "Library for Sunfounder Power Control"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: GNU License",
+  "Operating System :: OS Independent",
+]
+dynamic = ["version"]
+
+dependencies = [
+  'paho-mqtt',
+  'requests',
+  'smbus2',
+  'rpi_ws281x',
+  'pillow',
+]
+
+[tool.setuptools]
+packages = ["spc", "spc.scripts"]
+
+[project.urls]
+"Homepage" = "https://github.com/sunfounder/spc"
+"Bug Tracker" = "https://github.com/sunfounder/spc/issues"
+
+[project.scripts]
+spc = "spc:main"
+spc_auto = "spc.scripts.auto:main"
+spc_dashboard = "spc.scripts.dashboard:main"
+spc_mqtt_client = "spc.scripts.mqtt_client:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "spc.__version__"}

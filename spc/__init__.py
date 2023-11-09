@@ -1,8 +1,7 @@
 from .version import __version__
-from .spc import SPC
-import time
 
 def monitor(spc):
+    import time
     print("\033[H\033[J", end='')  # clear terminal windows
     print('\033[?25l', end='', flush=True) # cursor invisible
     try:
@@ -50,6 +49,7 @@ def print_all_data_once_json(spc):
 
 def main():
     import argparse
+    from .spc import SPC
 
     parser = argparse.ArgumentParser()
 

@@ -3,6 +3,15 @@
 import paho.mqtt.client as mqtt
 import time
 import json
+import socket
+from spc.utils import Logger
+from spc.spc import SPC
+from argparse import ArgumentParser
+from spc.config import Config
+
+import time
+
+log = Logger("MQTT_Client")
 
 class MQTT_Client:
     def __init__(self, host, port, node_name, username=None, password=None, discovery_perfix="homeassistant"):
@@ -19,11 +28,19 @@ class MQTT_Client:
         self.entities = {}
         self.setters = {}
         self.preset_mode = "normal"
-    
+        self._ready = False
+
+    def isready(self):
+        return self._ready
+
     def start(self):
         if (self.username != None and self.password != None):
             self.client.username_pw_set(self.username, self.password)
-        self.client.connect(self.host, self.port)
+        try:
+            self.client.connect(self.host, self.port)
+        except socket.gaierror:
+            log(f"Connection Failed. Name or service not known: {self.host}:{self.port}", level="WARNING")
+            return
         self.client.loop_start()
         self.init()
 
@@ -127,14 +144,6 @@ class MQTT_Client:
         self.publish(topic, {"state": state})
 
 def main():
-    from spc import SPC
-    from argparse import ArgumentParser
-    from spc.config import Config
-    import spc.utils as utils
-
-    import time
-
-    utils.SCRIPT_NAME = 'MQTT'
     config = Config()
     spc = SPC()
 
@@ -238,13 +247,16 @@ def main():
     spc = SPC()
 
     mqtt_client.start()
+    if not mqtt_client.isready():
+        log("Failed to start MQTT client", level="ERROR")
+        exit(1)
 
-    utils.log("Home Assistant MQTT client started", level="INFO")
+    log("Home Assistant MQTT client started", level="INFO")
 
     last_result = None
 
     def publish(topic, data):
-        utils.log("Publishing to {}: {}".format(topic, data), level="INFO")
+        log("Publishing to {}: {}".format(topic, data), level="INFO")
         mqtt_client.publish(topic, data)
 
     while True:

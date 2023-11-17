@@ -1,41 +1,9 @@
 #!/usr/bin/env python3
-from smbus import SMBus
+from .i2c import I2C
 import struct
 from .config import Config
-
-BOARDS = [
-    {
-        "id": "ups_case",
-        "name": "UPS Case",
-        "address": 0x00,
-        "support_data": [
-            'battery_voltage',
-            'battery_current',
-            'usb_voltage',
-            'usb_current',
-            'output_voltage',
-            'output_current',
-            'ref_voltage',
-            'power_source',
-            'is_usb_plugged_in',
-            'is_charging',
-            'fan_speed',
-            'battery_percentage',
-            'board_id',
-            'shutdown_request',
-        ],
-    },
-    {
-        "id": "pironman",
-        "name": "Pironman",
-        "address": 0x01,
-        "support_data": [
-            'usb_voltage',
-            'output_current',
-        ],
-    }
-]
-
+from .system_status import *
+from .devices import Devices
 
 # class SPC()
 # =================================================================
@@ -66,7 +34,36 @@ class SPC():
         'fan_speed': (21, 1, 'B'),
         'shutdown_request': (22, 1, '>B'),
     }
-
+    basic_data = [
+        'board_id',
+        'shutdown_request',
+        'cpu_temperature',
+    ]
+    peripheral_data = {
+        'battery': [
+            'battery_voltage',
+            'battery_current',
+            'battery_percentage',
+            'is_charging',
+        ],
+        'usb_in': [
+            'usb_voltage',
+            'usb_current',
+            'is_usb_plugged_in',
+        ],
+        'output': [
+            'output_voltage',
+            'output_current',
+        ],
+        'fan': [
+            'fan_speed',
+            'fan_mode',
+            'fan_state',
+        ],
+        'power_source_sensor': [
+            'power_source',
+        ]
+    }
     control_map = {
         'fan_speed': (0, 1),
     }
@@ -75,10 +72,17 @@ class SPC():
         self.addr = address
         try:
             self.i2c_dev = SMBus(1)
-            # self.i2c_dev.read_byte_data(self.addr, 0x00)  # try to read a byte
+            self.i2c_dev.read_byte_data(self.addr, 0x00)  # try to read a byte
         except Exception as e:
             raise IOError(f'UPS Case init error:\b\t{e}')
 
+        self.i2c = I2C(self.addr)
+        if not self.i2c.is_ready():
+            raise IOError(f'UPS Case init error: I2C device not found at address {self.addr}')
+
+        id = self._read_data('board_id')
+        self.device = Devices(id)
+        log(f'SPC detect device: {self.device.name} ({self.device.id})')
         self.config = Config()
         self.fan_mode = self.config.get('auto', 'fan_mode')
         self.fan_state = self.config.get('auto', 'fan_state') == 'True'
@@ -87,11 +91,11 @@ class SPC():
             self.set_fan_speed(self.fan_speed)
 
     def _read(self, start, length):
-        result = self.i2c_dev.read_i2c_block_data(self.addr, start, length)
+        result = self.i2c.read_block_data(start, length)
         return result
 
     def _write(self, name: str, value: list):
-        self.i2c_dev.write_i2c_block_data(self.addr, 0, value)
+        self.i2c.write_block_data(0, value)
 
     def _read_data(self, name: str):
         _start, _len, _format = self.data_map[name]
@@ -158,16 +162,7 @@ class SPC():
         result = self._read_data('shutdown_request')
         return int(result)
 
-    def read_cpu_temperature(self) -> float:
-        import subprocess
-        cmd = 'cat /sys/class/thermal/thermal_zone0/temp'
-        try:
-            temp = int(subprocess.check_output(cmd, shell=True).decode())
-            return round(temp / 1000, 2)
-        except Exception as e:
-            return 0.0
-
-    def read_all(self) -> dict:
+    def _read_all(self) -> dict:
         result = self._read(0, self.total_length)
         result = struct.unpack(self.data_format, bytes(result))
         # print(f"all: {result}")
@@ -181,9 +176,21 @@ class SPC():
         data['is_charging'] = data['is_charging'] == 1
         data['is_usb_plugged_in'] = data['is_usb_plugged_in'] == 1
         # data['power_source'] = 'Battery' if data['power_source'] == 1 else 'USB'
-        data['cpu_temperature'] = self.read_cpu_temperature()
+        data['cpu_temperature'] = get_cpu_temperature()
         data['fan_mode'] = self.fan_mode
         data['fan_state'] = self.fan_state
+        return data
+
+    def read_all(self) -> dict:
+        all_data = self._read_all()
+        data = {}
+        for data_name in self.basic_data:
+            data[data_name] = all_data[data_name]
+        for peripheral in self.device.peripherals:
+            if peripheral not in self.peripheral_data:
+                continue
+            for data_name in self.peripheral_data[peripheral]:
+                data[data_name] = all_data[data_name]
         return data
 
     def set_fan_speed(self, speed):

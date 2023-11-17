@@ -75,7 +75,7 @@ class SPC():
         self.addr = address
         try:
             self.i2c_dev = SMBus(1)
-            self.i2c_dev.read_byte_data(self.addr, 0x00)  # try to read a byte
+            # self.i2c_dev.read_byte_data(self.addr, 0x00)  # try to read a byte
         except Exception as e:
             raise IOError(f'UPS Case init error:\b\t{e}')
 
@@ -174,6 +174,10 @@ class SPC():
         data = {}
         for i, name in enumerate(self.data_map):
             data[name] = result[i]
+
+        for board in BOARDS:
+            if board['address'] == data['board_id']:
+                data['board_id'] = board['name']
         data['is_charging'] = data['is_charging'] == 1
         data['is_usb_plugged_in'] = data['is_usb_plugged_in'] == 1
         # data['power_source'] = 'Battery' if data['power_source'] == 1 else 'USB'
@@ -212,3 +216,20 @@ class SPC():
 
         self.fan_mode = mode
         self.config.set('auto', 'fan_mode', mode)
+
+
+    def set_rtc(self, date:list):
+        '''
+            date, list for [year, month, day, hour, minute, second, 1/128 second]
+        '''
+        date.append(1)
+        self.i2c_dev.write_i2c_block_data(self.addr, 1, date)
+        # self.i2c_dev.write_i2c_block_data(self.addr, 7, [1]) #enable set
+
+    def read_rtc(self):
+        result = self.i2c_dev.read_i2c_block_data(self.addr, 0x56, 7)
+        result = struct.unpack('>BBBBBBB', bytes(result))
+        result = list(result) # change tuple to list
+        result[6] = int(1000*result[6]/128) # 1/128 seconds to millisecond
+        return result
+

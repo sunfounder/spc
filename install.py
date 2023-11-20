@@ -10,6 +10,7 @@ import argparse
 
 
 DEPENDENCIES = [
+    "python3-build",
     "unzip",
 ]
 
@@ -148,7 +149,7 @@ def install():
     do(msg="update pip install build",
         cmd=f'source {working_dir}/venv/bin/activate && pip3 install --upgrade pip build')
     do(msg="build spc", cmd='python3 -m build')
-    do(msg="install spc", cmd=f'source {working_dir}/venv/bin/activate && pip3 install ./dist/spc-{__version__}-py3-none-any.whl')
+    do(msg="install spc", cmd=f'source {working_dir}/venv/bin/activate && pip3 install --force-reinstall ./dist/spc-{__version__}-py3-none-any.whl')
     do(msg="clean spc", cmd='rm -rf ./dist ./build ./spc.egg-info')
 
     # ================

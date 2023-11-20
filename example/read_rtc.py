@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from spc import SPC
+from spc.spc import SPC
 import time
 from datetime import datetime
 

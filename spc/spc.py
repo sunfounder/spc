@@ -43,6 +43,7 @@ class SPC():
         'battery': [
             'battery_voltage',
             'battery_current',
+            'battery_capactiy',
             'battery_percentage',
             'is_charging',
         ],
@@ -70,11 +71,6 @@ class SPC():
 
     def __init__(self, address=I2C_ADDRESS):
         self.addr = address
-        try:
-            self.i2c_dev = SMBus(1)
-            self.i2c_dev.read_byte_data(self.addr, 0x00)  # try to read a byte
-        except Exception as e:
-            raise IOError(f'UPS Case init error:\b\t{e}')
 
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
@@ -169,10 +165,7 @@ class SPC():
         data = {}
         for i, name in enumerate(self.data_map):
             data[name] = result[i]
-
-        for board in BOARDS:
-            if board['address'] == data['board_id']:
-                data['board_id'] = board['name']
+        data['board_id'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
         data['is_usb_plugged_in'] = data['is_usb_plugged_in'] == 1
         # data['power_source'] = 'Battery' if data['power_source'] == 1 else 'USB'

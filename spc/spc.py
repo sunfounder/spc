@@ -223,11 +223,11 @@ class SPC():
             date, list for [year, month, day, hour, minute, second, 1/128 second]
         '''
         date.append(1)
-        self.i2c_dev.write_i2c_block_data(self.addr, 1, date)
-        # self.i2c_dev.write_i2c_block_data(self.addr, 7, [1]) #enable set
+        self.i2c.write_block_data(1, date)
+        # self.i2c.write_block_data(7, [1]) #enable set
 
     def read_rtc(self):
-        result = self.i2c_dev.read_i2c_block_data(self.addr, 0x56, 7)
+        result = self.i2c.read_block_data(0x56, 7)
         result = struct.unpack('>BBBBBBB', bytes(result))
         result = list(result) # change tuple to list
         result[6] = int(1000*result[6]/128) # 1/128 seconds to millisecond

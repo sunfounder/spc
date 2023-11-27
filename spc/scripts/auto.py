@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
+import os
+import sys
 
 from argparse import ArgumentParser
 from spc.spc import SPC
 from spc.config import Config
 from spc.oled import OLED, Rect
-from spc.utils import Logger
+
+from spc.utils import Logger, run_command
 import threading
 from spc.system_status import get_cpu_usage, get_ram_info, get_disk_space, get_ip_address
 from spc.ha_api import HA_API
 from spc.ws2812 import WS2812, RGB_styles
 from spc.configtxt import ConfigTxt
+
 
 import time
 import os
@@ -20,8 +24,8 @@ oled = OLED()
 ha = HA_API()
 config = Config()
 parser = ArgumentParser()
-parser.add_argument("command", choices=["start"], nargs="?", help="Command")
-parser.add_argument("-r", "--reflash-interval", default=config.getint("auto",
+parser.add_argument("command", choices=["start", "restart"], nargs="?", help="Command")
+parser.add_argument("-r", "--reflash-interval", type=float, default=config.getfloat("auto",
                     "reflash_interval"), help="Data update Interval")
 parser.add_argument("-R", "--retry-interval", type=int, default=config.getint(
     "auto", "retry_interval"), help="Retry interval after error")
@@ -78,15 +82,20 @@ oled_timer_start = 0
 ip = "DISCONNECT"
 data = None
 rgb = None
+has_change = False
 need_reboot = False
+
+ip_detect_interval = 2000 # ms
+ip_detect_start_time = 0
 
 
 def handle_param_change():
-    global need_reboot
+    global has_change, need_reboot
     for param in args.__dict__:
         new_value = args.__dict__[param]
         if str(new_value) == config.get("auto", param):
             continue
+        has_change = True
         config.set("auto", param, new_value)
         if param == "rgb_pin":
             log(f"change rgb pin to {new_value}", level="INFO")
@@ -165,7 +174,8 @@ def shutdown_control(data):
     # print(shutdown_request)
     if last_shutdown_request != shutdown_request:
         last_shutdown_request = shutdown_request
-        log(f"shutdown_request code: {shutdown_request}", level="INFO")
+        if last_shutdown_request != 255:
+            log(f"shutdown_request code: {shutdown_request}", level="INFO")
     if shutdown_request == 1:
         log("Low power shutdown.", level="INFO")
         os.system("sudo poweroff")
@@ -177,13 +187,14 @@ def shutdown_control(data):
 
 
 def draw_oled(data):
+    global ip, ip_detect_start_time
+
     # Check if device supports OLED
     if "oled" not in spc.device.peripherals:
         return
     # Check if OLED is ready
     if not oled.is_ready():
         return
-    global ip
 
     # Currently iled is on for:
     # current_on_for = time.time() - oled_timer_start
@@ -191,6 +202,7 @@ def draw_oled(data):
     #     oled.off()
     #     return
 
+    
     cpu_usage = get_cpu_usage()
     cpu_temperature = data["cpu_temperature"]
     oled.clear()
@@ -206,18 +218,21 @@ def draw_oled(data):
     disk_percent = float(disk_stats[3])
 
     # display info
-    ip_rect = Rect(48, 0, 81, 10)
-    cpu_info_rect = Rect(0, 29, 30, 8)
-    temp_info_rect = Rect(0, 38, 30, 8)
-    ram_info_rect = Rect(46, 17, 81, 10)
-    ram_rect = Rect(46, 29, 81, 10)
-    rom_info_rect = Rect(46, 41, 81, 10)
-    rom_rect = Rect(46, 53, 81, 10)
+    cpu_info_rect = Rect(0, 29, 34, 8)
+    temp_info_rect = Rect(0, 38, 34, 8)
+    ip_rect = Rect(40, 0, 87, 10)
+    ram_info_rect = Rect(40, 17, 87, 10)
+    ram_rect = Rect(40, 29, 87, 10)
+    rom_info_rect = Rect(40, 41, 87, 10)
+    rom_rect = Rect(40, 53, 87, 10)
 
     # get ip if disconnected
-    if ip == "DISCONNECT":
+    if ip == "DISCONNECT" \
+        or (time.time() - ip_detect_start_time > ip_detect_interval):
         ip = get_ip_address()
 
+
+    # draw CPU usage
     oled.draw_text("CPU", 6, 0)
     oled.draw.pieslice((0, 12, 30, 42), start=180,
                        end=0, fill=0, outline=1)
@@ -226,6 +241,7 @@ def draw_oled(data):
     # Clear the CPU info area
     oled.draw.rectangle(cpu_info_rect.rect(), outline=0, fill=0)
     oled.draw_text('{:^5.1f} %'.format(cpu_usage), 2, 27)
+
     # Temp
     # Clear the temperature info area
     oled.draw.rectangle(temp_info_rect.rect(), outline=0, fill=0)
@@ -237,23 +253,27 @@ def draw_oled(data):
             180-180*cpu_temperature * 0.01), end=180, fill=1, outline=1)
     elif args.temperature_unit == 'F':
         cpu_temperature = cpu_temperature * 1.8 + 32
-        oled.draw_text('{:>4.1f} \'F'.format(cpu_temperature), 2, 38)
+        # oled.draw_text('{:>4.1f} \'F'.format(cpu_temperature), 2, 38)
+        oled.draw_text('{:>4.1f}'.format(cpu_temperature), 2, 38)
+        oled.draw_text('\'F'.format(cpu_temperature), 26, 38)
         oled.draw.pieslice((0, 33, 30, 63), start=0,
                            end=180, fill=0, outline=1)
         pcent = (cpu_temperature-32)/1.8
         oled.draw.pieslice((0, 33, 30, 63), start=int(
             180-180*pcent*0.01), end=180, fill=1, outline=1)
     # RAM
-    oled.draw_text('RAM: {}/{} GB'.format(ram_used,
-                                          ram_total), *ram_info_rect.coord())
-    # draw_text('{:>5.1f}'.format(RAM_usage)+' %',92,0)
+    # oled.draw_text('RAM: {}/{} GB'.format(ram_used,
+    #                                       ram_total), *ram_info_rect.coord())
+    # # draw_text('{:>5.1f}'.format(RAM_usage)+' %',92,0)
+    oled.draw_text(f'RAM: {ram_used:3.1f} / {ram_total:3.1f} G', *ram_info_rect.coord())  
     oled.draw.rectangle(ram_rect.rect(), outline=1, fill=0)
     oled.draw.rectangle(ram_rect.rect(ram_usage), outline=1, fill=1)
     # Disk
-    oled.draw_text('ROM: {}/{} GB'.format(disk_used,
-                                          disk_total), *rom_info_rect.coord())
-    # draw_text('     ',72,32)
-    # draw_text(''+' G',72,32)
+    disk_used = 100.12
+    disk_total = 360.12
+
+    oled.draw_text(f'ROM: {disk_used:4.1f} / {disk_total:4.1f} G', *rom_info_rect.coord())  
+
     oled.draw.rectangle(rom_rect.rect(), outline=1, fill=0)
     oled.draw.rectangle(rom_rect.rect(disk_percent), outline=1, fill=1)
     # IP
@@ -280,32 +300,32 @@ def rgb_control():
         log(e, level='rgb_strip')
 
 
-# main
-# =================================================================
-def main():
+
+def background_process():
+    from multiprocessing import Process
+    import sys
+
+    sys.stdout = open(os.devnull, 'w')
+
+    # def _process():
+    #     with open(os.devnull, 'w') as devnull:
+    #         foreground_process()
+
+    _p = Process(target=foreground_process)
+    _p.daemon = False
+    _p.start()
+
+    import sys
+    sys.exit(0)
+
+def foreground_process():
+    global rgb
     retry_flag = False
 
-    handle_param_change()
-    if need_reboot == True:
-        print(
-            "\033[1;32mWhether to restart for the changes to take effect(Y/N):\033[0m"
-        )
-        while True:
-            key = input()
-            if key == 'Y' or key == 'y':
-                print(f'reboot')
-                os.system('reboot')
-            elif key == 'N' or key == 'n':
-                print(f'exit')
-                return
-            else:
-                continue
-    if args.command == None:
-        return
     # Check if device support WS2812
     if 'ws2812' in spc.device.peripherals:
         rgb = WS2812(LED_COUNT=16, LED_PIN=args.rgb_pin,
-                     LED_FREQ_HZ=args.rgb_pwm_frequency*1000)
+                    LED_FREQ_HZ=args.rgb_pwm_frequency*1000)
 
         # rgb_strip thread
         if args.rgb_switch == True:
@@ -323,7 +343,9 @@ def main():
         shutdown_control(data)
         fan_auto_control(data)
         draw_oled(data)
+        # time.sleep(float(args.reflash_interval))
         time.sleep(args.reflash_interval)
+
         retry_flag = False
         # except Exception as e:
         #     if retry_flag == False:
@@ -334,6 +356,37 @@ def main():
         #     time.sleep(args.retry_interval)
         #     continue
 
+
+# main
+# =================================================================
+def main():
+    handle_param_change()
+    if need_reboot == True:
+        print(
+            "\033[1;32mWhether to restart for the changes to take effect(Y/N):\033[0m"
+        )
+        while True:
+            key = input()
+            if key == 'Y' or key == 'y':
+                print(f'reboot')
+                os.system('reboot')
+            elif key == 'N' or key == 'n':
+                print(f'exit')
+                return
+            else:
+                continue
+    # if args.command == 'start' or args.command == 'restart' or has_change:
+    #     run_command("sudo kill $(ps aux | grep \'ezblock-reset-service\' | awk \'{ print $2 }\'")
+    # else:
+    #     return
+    # if args.command == 'start':
+    #     run_command("sudo kill $(ps aux | grep \'spc_auto\' | awk \'{ print $2 }\')")
+    # else:
+    #     return
+    if args.command != 'start':
+        return
+    # background_process()
+    foreground_process()
 
 if __name__ == "__main__":
     # try:

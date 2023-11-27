@@ -80,6 +80,13 @@ class Config:
         except ValueError:
             return result
 
+    def getfloat(self, section, key, default=None):
+        result = self.get(section, key, default)
+        try:
+            return float(result)
+        except ValueError:
+            return result
+
     def set(self, section, key, value):
         self.config[section][key] = str(value)
         with open(self.config_file, 'w') as f:

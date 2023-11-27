@@ -10,7 +10,6 @@ import argparse
 
 
 DEPENDENCIES = [
-    "python3-build",
     "unzip",
 ]
 
@@ -23,7 +22,9 @@ parser.add_argument('--skip-reboot', action='store_true',
                     help='Do not reboot after install')
 parser.add_argument('--disable-autostart', action='store_true',
                     help='Do not start SPC automatically')
-parser.add_argument('--mqtt-client', action=argparse.BooleanOptionalAction, default=False, help='Enable MQTT client or not')
+# parser.add_argument('--mqtt-client', action=argparse.BooleanOptionalAction, default=False, help='Enable MQTT client or not')
+parser.add_argument('--mqtt-client', action='store_true', default=False, help='Enable MQTT client or not')
+
 args = parser.parse_args()
 
 if os.geteuid() != 0:
@@ -141,14 +142,22 @@ def install():
     set_config(msg="config gpio-ir GPIO13 ",
                name="dtoverlay=gpio-ir,gpio_pin",
                value="13")
-
+    # ================
+    set_config(msg="set core_freq to 500",
+        name="core_freq",
+        value="500"
+    )
+    set_config(msg="set core_freq_min to 500",
+        name="core_freq_min",
+        value="500"
+    )  
     # ================
     print('Install spc library')
     do(msg="create virtual environment",
         cmd=f'python3 -m venv {working_dir}/venv')
     do(msg="update pip install build",
         cmd=f'source {working_dir}/venv/bin/activate && pip3 install --upgrade pip build')
-    do(msg="build spc", cmd='python3 -m build')
+    do(msg="build spc", cmd=f'source {working_dir}/venv/bin/activate && python3 -m build')
     do(msg="install spc", cmd=f'source {working_dir}/venv/bin/activate && pip3 install --force-reinstall ./dist/spc-{__version__}-py3-none-any.whl')
     do(msg="clean spc", cmd='rm -rf ./dist ./build ./spc.egg-info')
 

@@ -37,6 +37,8 @@ spc = "spc:main"
 spc_auto = "spc.scripts.auto:main"
 spc_dashboard = "spc.scripts.dashboard:main"
 spc_mqtt_client = "spc.scripts.mqtt_client:main"
+spc_rtc = "spc.scripts.rtc:main"
+
 
 [tool.setuptools.dynamic]
 version = {attr = "spc.__version__"}

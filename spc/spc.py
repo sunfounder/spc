@@ -74,7 +74,7 @@ class SPC():
 
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
-            raise IOError(f'UPS Case init error: I2C device not found at address {self.addr}')
+            raise IOError(f'Pironman U1 init error: I2C device not found at address {self.addr}')
 
         id = self._read_data('board_id')
         self.device = Devices(id)

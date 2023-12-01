@@ -2,8 +2,8 @@
 class Devices():
     DEVICES = [
         {
-            'name': 'UPS Case',
-            'id': 'ups_case',
+            'name': 'Pironman U1',
+            'id': 'pironman_u1',
             "address": 0x00,
             "peripherals": [
                 'battery',

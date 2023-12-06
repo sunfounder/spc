@@ -34,6 +34,7 @@ class SPC():
         'fan_speed': (21, 1, 'B'),
         'shutdown_request': (22, 1, '>B'),
     }
+    rtc_time_map = (23, 7, '>BBBBBBB')
     basic_data = [
         'board_id',
         'shutdown_request',
@@ -74,7 +75,7 @@ class SPC():
 
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
-            raise IOError(f'Pironman U1 init error: I2C device not found at address {self.addr}')
+            raise IOError(f'Pironman U1 init error: I2C device not found at address 0x{self.addr:02X}')
 
         id = self._read_data('board_id')
         self.device = Devices(id)
@@ -227,8 +228,9 @@ class SPC():
         # self.i2c.write_block_data(7, [1]) #enable set
 
     def read_rtc(self):
-        result = self.i2c.read_block_data(0x56, 7)
-        result = struct.unpack('>BBBBBBB', bytes(result))
+        _start, _len, _format = self.rtc_time_map
+        result = self.i2c.read_block_data(_start, _len)
+        result = struct.unpack(_format, bytes(result))
         result = list(result) # change tuple to list
         result[6] = int(1000*result[6]/128) # 1/128 seconds to millisecond
         return result

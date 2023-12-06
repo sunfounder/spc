@@ -5,7 +5,9 @@ import time
 spc = SPC()
 
 while True:
-    print('----------------------------------------------')
+    # print('----------------------------------------------')
+    print("\033[H\033[J", end='')  # clear terminal windows
+
     data_buffer = spc.read_all()
     print(f"        Board name:       {data_buffer['board_id']}")
     print(f"   Battery voltage:       {data_buffer['battery_voltage']} mV")

@@ -4,6 +4,7 @@ import struct
 from .config import Config
 from .system_status import *
 from .devices import Devices
+import sys
 
 # class SPC()
 # =================================================================
@@ -88,7 +89,20 @@ class SPC():
             self.set_fan_speed(self.fan_speed)
 
     def _read(self, start, length):
-        result = self.i2c.read_block_data(start, length)
+        _retry = 5
+        for i in range(_retry):
+            try:
+                result = self.i2c.read_block_data(start, length)
+                break
+            except TimeoutError:
+                time.sleep(.01)
+                continue
+            # other exceptions will be raised
+        else:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print(f"_read() TimeoutError: {exc_type} - {exc_value}")
+            raise
+
         return result
 
     def _write(self, name: str, value: list):

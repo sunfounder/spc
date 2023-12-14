@@ -42,7 +42,12 @@ class Config:
             print('Configuration file does not exist, recreating ...')
             # create config_file
             status, result = run_command(cmd=f'sudo touch {config_file}' +
-                                        f' && sudo chmod 775 {config_file}')
+                                        f' && sudo chmod 777 {config_file}')
+
+            self.config.read_dict(self.default_values)
+            with open(self.config_file, 'w') as f:
+                self.config.write(f)
+
             if status != 0:
                 print('create config_file failed:\n%s' % result)
                 raise Exception(result)
@@ -50,6 +55,8 @@ class Config:
         self.config.read(config_file)
 
     def get(self, section, key, default=None):
+        self.config.read(self.config_file)
+
         if default is None:
             default = self.default_values.get(section, {}).get(key, None)
         try:

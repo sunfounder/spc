@@ -25,12 +25,28 @@ parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), h
 
 args = parser.parse_args()
 
+last_get_all = False # if last log is get_all, do not log this time
+
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
     routes = ["/", "/dashboard", "/minimal"]
 
+
+    def send_response(self, code, message=None, is_log=True):
+        if is_log:
+            self.log_request(code)
+        self.send_response_only(code, message)
+        self.send_header('Server', self.version_string())
+        self.send_header('Date', self.date_time_string())
+
     def do_GET(self):
-        self.send_response(200)
+        global last_get_all
+        if last_get_all:
+            self.send_response(200, is_log=False)
+        else:
+            last_get_all = True
+            self.send_response(200, is_log=True)
+
         self.send_header('Access-Control-Allow-Origin', '*')
         response = None
         if self.path.startswith(self.api_prefix):
@@ -71,12 +87,15 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(b'File not found: %s' % filename.encode())
     
     def do_POST(self):
+        global last_get_all
+
         content_length = int(self.headers['Content-Length'])
         data = self.rfile.read(content_length)
         
         if self.path.startswith(self.api_prefix):
             command = self.path[len(self.api_prefix):]
             self.handle_post(command, data)
+            last_get_all = False
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')

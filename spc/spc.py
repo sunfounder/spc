@@ -225,9 +225,9 @@ class SPC():
         if mode == 'quiet':
             self.set_fan_speed(40)
         elif mode == 'normal':
-            self.set_fan_speed(40)
+            self.set_fan_speed(70)
         elif mode == 'performance':
-            self.set_fan_speed(40)
+            self.set_fan_speed(100)
 
         self.fan_mode = mode
         self.config.set('auto', 'fan_mode', mode)

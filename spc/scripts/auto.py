@@ -117,55 +117,68 @@ def handle_param_change():
 
 
 def fan_auto_control(data):
-    global auto_fan_level, auto_fan_initial, last_fan_state, last_fan_speed, fan_state, fan_speed
-
+    global fan_speed, last_fan_speed, auto_fan_level, auto_fan_initial
     # Check if device supports fan
     if "fan" not in spc.device.peripherals:
         return
 
-    # Check if fan is on
-    if not fan_state:
-        if fan_state != last_fan_state:
-            last_fan_state = fan_state
-            spc.set_fan_state(fan_state)
-            log(f"set fan state: {fan_state}", level="INFO")
-        return
-    # Check if fan is auto
-    if not args.fan_mode == "auto":
-        if fan_speed != last_fan_speed:
+    # read fan_state
+    _fan_state = config.getboolean("auto", "fan_state")
+    # if the fan is off
+    if _fan_state is False:
+        if last_fan_speed is None or last_fan_speed != fan_speed:
+            last_fan_speed = fan_speed
+            spc.set_fan_speed(0)
+        else:
+            return
+
+    # if the fan is on, and fan_mode is auto, adjust fan speed based on  CPU temperature
+    # read fan_mode
+    _fan_mode = config.get('auto', 'fan_mode')
+    # if fan_mode is not auto
+    if _fan_mode != 'auto':
+        if _fan_mode == 'quiet':
+            fan_speed = 40
+        elif _fan_mode == 'normal':
+            fan_speed = 70
+        elif _fan_mode == 'performance':
+            fan_speed = 100
+        #
+        if last_fan_speed != fan_speed:
             last_fan_speed = fan_speed
             spc.set_fan_speed(fan_speed)
-            log(f"set fan speed: {fan_speed}", level="INFO")
-        return
+        else:
+            return
 
-    # --- fan control ---
+    # --- fan auto control ---
     cpu_temp = data["cpu_temperature"]
     changed = False
-    direction = -1
-    new_level = auto_fan_level
+    direction = ""
     if cpu_temp < AUTO_FAN_LEVELS[auto_fan_level]["low"]:
-        new_level -= 1
+        auto_fan_level -= 1
         changed = True
         direction = "low"
     elif cpu_temp > AUTO_FAN_LEVELS[auto_fan_level]["high"]:
-        new_level += 1
+        auto_fan_level += 1
         changed = True
         direction = "high"
-
+    #
     if changed or auto_fan_initial:
-        new_level = max(0, min(new_level, len(AUTO_FAN_LEVELS) - 1))
-        speed = AUTO_FAN_LEVELS[new_level]["percent"]
+        auto_fan_level = max(0, min(auto_fan_level, len(AUTO_FAN_LEVELS) - 1))
+        speed = AUTO_FAN_LEVELS[auto_fan_level]["percent"]
         spc.set_fan_speed(speed)
+
         if auto_fan_initial:
             log(f"cpu temperature: {cpu_temp} \"C", level="INFO")
         else:
             log(
                 f"cpu temperature: {cpu_temp} \"C, {direction}er than {AUTO_FAN_LEVELS[auto_fan_level][direction]}", level="INFO")
-        log(f"set fan level: {AUTO_FAN_LEVELS[new_level]['name']}", level="INFO")
+  
+        log(f"set fan level: {AUTO_FAN_LEVELS[auto_fan_level]['name']}", level="INFO")
         log(f"set fan speed: {speed}", level="INFO")
-        auto_fan_level = new_level
+    
         auto_fan_initial = False
-
+    
 
 def shutdown_control(data):
     global last_shutdown_request
@@ -303,7 +316,6 @@ def rgb_control():
 
 def background_process():
     from multiprocessing import Process
-    import sys
 
     sys.stdout = open(os.devnull, 'w')
 
@@ -315,8 +327,8 @@ def background_process():
     _p.daemon = False
     _p.start()
 
-    import sys
     sys.exit(0)
+
 
 def foreground_process():
     global rgb
@@ -338,24 +350,21 @@ def foreground_process():
     log(f'SPC auto started', level='INFO')
 
     while True:
-        # try:
-        data = spc.read_all()
-        shutdown_control(data)
-        fan_auto_control(data)
-        draw_oled(data)
-        # time.sleep(float(args.reflash_interval))
-        time.sleep(args.reflash_interval)
-
-        retry_flag = False
-        # except Exception as e:
-        #     if retry_flag == False:
-        #         retry_flag = True
-        #         log(e, level='ERROR')
-        #         log(f'retrying ...', level='DEBUG')
-        #     # retrying
-        #     time.sleep(args.retry_interval)
-        #     continue
-
+        try:
+            data = spc.read_all()
+            shutdown_control(data)
+            fan_auto_control(data)
+            draw_oled(data)
+            time.sleep(float(args.reflash_interval))
+            retry_flag = False
+        except Exception as e:
+            if retry_flag == False:
+                retry_flag = True
+                log(e, level='ERROR')
+                log(f'retrying ...', level='DEBUG')
+            # retrying
+            time.sleep(args.retry_interval)
+            continue
 
 # main
 # =================================================================

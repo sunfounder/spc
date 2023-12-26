@@ -23,6 +23,7 @@ dependencies = [
   'smbus2',
   'rpi_ws281x',
   'pillow',
+  'psutil',
 ]
 
 [tool.setuptools]

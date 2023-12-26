@@ -8,7 +8,7 @@ from spc.spc import SPC
 import json
 
 from spc.config import Config
-from spc.utils import Logger
+from spc.utils import Logger, get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 
 log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
@@ -26,6 +26,7 @@ parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), h
 args = parser.parse_args()
 
 last_get_all = False # if last log is get_all, do not log this time
+
 
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
@@ -119,6 +120,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         data = {}
         if command == 'get-all':
             data = spc.read_all()
+            data['cpu'] = get_cpu_info()
+            data['memory'] = get_memory_info()
+            data['disk'] = get_disks_info()
+            data['network'] = get_network_info()
+            data['boot_time'] = get_boot_time()
         return json.dumps({"data": data})
 
     def handle_post(self, command, payload):

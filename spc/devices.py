@@ -11,6 +11,7 @@ class Devices():
                 'power_source_sensor',
                 'output',
                 'fan',
+                'ir',
             ],
         }, {
             'name': 'Pironman 4',
@@ -21,6 +22,7 @@ class Devices():
                 'fan',
                 'oled',
                 'ws2812',
+                'ir',
             ],
         }
     ]

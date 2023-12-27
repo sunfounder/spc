@@ -119,6 +119,7 @@ def set_config(msg="", name="", value=""):
 # main
 # =================================================================
 def install():
+    global config
     print(f"SPC-Core {__version__} install process starts for {user_name}:\n")
 
     working_dir = "/opt/spc"

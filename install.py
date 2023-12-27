@@ -11,6 +11,10 @@ import argparse
 
 DEPENDENCIES = [
     "unzip",
+    "git",
+    "python3-pip",
+    "python3-setuptools",
+    "python3-venv",
 ]
 
 SPC_DASHBOARD_DOWNLOAD_LINK = "https://github.com/sunfounder/spc-dashboard/releases/latest/download/spc-dashboard.zip"
@@ -22,6 +26,8 @@ parser.add_argument('--skip-reboot', action='store_true',
                     help='Do not reboot after install')
 parser.add_argument('--disable-autostart', action='store_true',
                     help='Do not start SPC automatically')
+parser.add_argument('--skip-config-txt', action='store_true',
+                    help='Do not set config.txt')
 # parser.add_argument('--mqtt-client', action=argparse.BooleanOptionalAction, default=False, help='Enable MQTT client or not')
 parser.add_argument('--mqtt-client', action='store_true', default=False, help='Enable MQTT client or not')
 
@@ -99,7 +105,7 @@ def do(msg="", cmd=""):
         errors.append(f"{msg} error:\n  Command: {cmd}\n  Status: {status}\n  Result: {result}\n  Error: {error}")
 
 
-config = None
+config = ConfigTxt()
 
 def set_config(msg="", name="", value=""):
     global need_reboot
@@ -119,7 +125,6 @@ def set_config(msg="", name="", value=""):
 # main
 # =================================================================
 def install():
-    global config
     print(f"SPC-Core {__version__} install process starts for {user_name}:\n")
 
     working_dir = "/opt/spc"
@@ -140,29 +145,28 @@ def install():
         f' && chmod -R 775 {working_dir}' +
         f' && chown -R {user_name}:{user_name} {working_dir}')
 
-    config = ConfigTxt()
-
     # ================
-    print("Config gpio")
-    set_config(msg="enable spi in config", name="dtparam=spi", value="on")
-    set_config(msg="enable i2c in config", name="dtparam=i2c_arm", value="on")
-    # dtoverlay=gpio-poweroff,gpio_pin=26,active_low=0
-    set_config(msg="config gpio-poweroff GPIO26",
-               name="dtoverlay=gpio-poweroff,gpio_pin",
-               value="26,active_low=0")
-    # dtoverlay=gpio-ir,gpio_pin=13
-    set_config(msg="config gpio-ir GPIO13 ",
-               name="dtoverlay=gpio-ir,gpio_pin",
-               value="13")
-    # ================
-    set_config(msg="set core_freq to 500",
-        name="core_freq",
-        value="500"
-    )
-    set_config(msg="set core_freq_min to 500",
-        name="core_freq_min",
-        value="500"
-    )  
+    if not args.skip_config_txt:
+        print("Config gpio")
+        set_config(msg="enable spi in config", name="dtparam=spi", value="on")
+        set_config(msg="enable i2c in config", name="dtparam=i2c_arm", value="on")
+        # dtoverlay=gpio-poweroff,gpio_pin=26,active_low=0
+        set_config(msg="config gpio-poweroff GPIO26",
+                name="dtoverlay=gpio-poweroff,gpio_pin",
+                value="26,active_low=0")
+        # dtoverlay=gpio-ir,gpio_pin=13
+        set_config(msg="config gpio-ir GPIO13 ",
+                name="dtoverlay=gpio-ir,gpio_pin",
+                value="13")
+        # ================
+        set_config(msg="set core_freq to 500",
+            name="core_freq",
+            value="500"
+        )
+        set_config(msg="set core_freq_min to 500",
+            name="core_freq_min",
+            value="500"
+        )  
     # ================
     print('Install spc library')
     do(msg="create virtual environment",

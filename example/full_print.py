@@ -18,6 +18,7 @@ def main():
 
         
         print(f"Board name:               {data_buffer['board_id']:<20s}")
+        print(f"Firmware Version:         {spc.read_firmware_version():<20s}")
         print(f"VCC voltage:              {str(spc._read_data('vcc_voltage'))+' mV':<10s}")
 
         if ('battery'  in spc.device.peripherals):
@@ -44,7 +45,7 @@ if __name__ == '__main__':
 
     try:
         print("\033c", end='', flush=True)  # clear terminal windows
-        time.sleep(.01) # Delay is necessary, otherwise the cursor cannot be hidden
+        time.sleep(.1) # Delay is necessary, otherwise the cursor cannot be hidden
         print('\033[?25l', end='', flush=True) # cursor invisible
         main()
     finally:

@@ -36,6 +36,8 @@ class SPC():
         'shutdown_request': (22, 1, '>B'),
     }
     rtc_time_map = (23, 7, '>BBBBBBB')
+    firmware_version_map = (30, 3, '>BBB')
+
     basic_data = [
         'board_id',
         'shutdown_request',
@@ -248,4 +250,12 @@ class SPC():
         result = list(result) # change tuple to list
         result[6] = int(1000*result[6]/128) # 1/128 seconds to millisecond
         return result
+
+    def read_firmware_version(self):
+        _start, _len, _format = self.firmware_version_map
+        result = self.i2c.read_block_data(_start, _len)
+        result = struct.unpack(_format, bytes(result))
+        _version = f"{result[0]}.{result[1]}.{result[2]}"
+        return _version
+
 

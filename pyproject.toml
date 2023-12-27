@@ -22,7 +22,7 @@ dependencies = [
   'requests',
   'smbus2',
   'rpi_ws281x',
-  'pillow',
+  'pillow -C jpeg=disable',
   'psutil',
 ]
 

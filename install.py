@@ -34,7 +34,10 @@ if os.geteuid() != 0:
 errors = []
 need_reboot = False
 
-user_name = os.getlogin()
+try:
+    username = os.getlogin() # can run at boot
+except:
+    username = os.popen("echo ${SUDO_USER:-$(who -m | awk '{ print $1 }')}").readline().strip()
 
 #
 # =================================================================

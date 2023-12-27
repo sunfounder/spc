@@ -34,10 +34,11 @@ if os.geteuid() != 0:
 errors = []
 need_reboot = False
 
+user_name = ''
 try:
-    username = os.getlogin() # can run at boot
+    user_name = os.getlogin() # can run at boot
 except:
-    username = os.popen("echo ${SUDO_USER:-$(who -m | awk '{ print $1 }')}").readline().strip()
+    user_name = os.popen("echo ${SUDO_USER:-$(who -m | awk '{ print $1 }')}").readline().strip()
 
 #
 # =================================================================
@@ -98,7 +99,7 @@ def do(msg="", cmd=""):
         errors.append(f"{msg} error:\n  Command: {cmd}\n  Status: {status}\n  Result: {result}\n  Error: {error}")
 
 
-config = ConfigTxt()
+config = None
 
 def set_config(msg="", name="", value=""):
     global need_reboot
@@ -133,6 +134,13 @@ def install():
         do(msg="install dependencies",
             cmd='apt-get install -y ' + ' '.join(DEPENDENCIES))
     
+    do(msg=f"create working directory {working_dir}",
+        cmd=f'mkdir -p {working_dir}' +
+        f' && chmod -R 775 {working_dir}' +
+        f' && chown -R {user_name}:{user_name} {working_dir}')
+
+    config = ConfigTxt()
+
     # ================
     print("Config gpio")
     set_config(msg="enable spi in config", name="dtparam=spi", value="on")
@@ -166,10 +174,6 @@ def install():
 
     # ================
     print('Install spc auto control program')
-    do(msg=f"check dir {working_dir}",
-        cmd=f'mkdir -p {working_dir}' +
-        f' && chmod -R 775 {working_dir}' +
-        f' && chown -R {user_name}:{user_name} {working_dir}')
     do(msg=f"copy {spc_server_file} file",
         cmd=f'cp ./bin/{spc_server_file} {working_dir}/{spc_server_file}')
     do(msg=f'copy {service_config_file} file',

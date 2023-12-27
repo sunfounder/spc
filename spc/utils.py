@@ -6,6 +6,7 @@ class Logger(object):
         self.log_file = log_file
 
     def __call__(self, msg: str = None, level='DEBUG', end='\n', flush=False, timestampEnable=True):
+        import time
         with open(f'{self.log_file}', 'a+') as log_file:
             if timestampEnable == True:
                 timestamp = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
@@ -29,7 +30,8 @@ net_io_counter = None
 net_io_counter_time = None
 
 def get_network_connection_type():
-    interfaces = psutil.net_if_stats()
+    from psutil import net_if_stats
+    interfaces = net_if_stats()
     connection_type = []
     
     for interface, stats in interfaces.items():

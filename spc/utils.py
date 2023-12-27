@@ -1,6 +1,3 @@
-import time
-import psutil
-import subprocess
 import sys
 
 class Logger(object):
@@ -45,11 +42,13 @@ def get_network_connection_type():
     return connection_type
 
 def get_network_speed():
+    from psutil import net_io_counters
+    from time import time
     global net_io_counter, net_io_counter_time
     network_speed = {}
     # 获取初始网络计数器信息
-    current_net_io_counter = psutil.net_io_counters()
-    current_net_io_counter_time = time.time()
+    current_net_io_counter = net_io_counters()
+    current_net_io_counter_time = time()
 
     if net_io_counter is None:
         net_io_counter = current_net_io_counter
@@ -87,7 +86,8 @@ def get_network_info():
 
 
 def get_memory_info():
-    memory_info = psutil.virtual_memory()
+    from psutil import virtual_memory
+    memory_info = virtual_memory()
     memory = {}
     memory['total'] = memory_info.total
     memory['available'] = memory_info.available
@@ -97,6 +97,8 @@ def get_memory_info():
     return memory
 
 def get_disks_info():
+    from psutil import disk_partitions, disk_usage
+    import subprocess
     disks = []
     output = subprocess.check_output(["lsblk", "-o", "NAME,TYPE", "-n", "-l"]).decode().strip().split('\n')
     
@@ -109,7 +111,7 @@ def get_disks_info():
     
     for disk in disks:
         try:
-            partitions = psutil.disk_partitions(all=True)
+            partitions = disk_partitions(all=True)
             total = 0
             used = 0
             free = 0
@@ -117,7 +119,7 @@ def get_disks_info():
             
             for partition in partitions:
                 if partition.device.startswith("/dev/" + disk):
-                    usage = psutil.disk_usage(partition.mountpoint)
+                    usage = disk_usage(partition.mountpoint)
                     total += usage.total
                     used += usage.used
                     free += usage.free
@@ -135,12 +137,14 @@ def get_disks_info():
     return disk_info
 
 def get_cpu_info():
+    from psutil import cpu_percent, cpu_freq, cpu_count, cpu_stats
     cpu_info = {}
-    cpu_info['percent'] = psutil.cpu_percent(percpu=True)
-    cpu_info['freq'] = psutil.cpu_freq(percpu=True)
-    cpu_info['count'] = psutil.cpu_count()
-    cpu_info['stats'] = psutil.cpu_stats()
+    cpu_info['percent'] = cpu_percent(percpu=True)
+    cpu_info['freq'] = cpu_freq(percpu=True)
+    cpu_info['count'] = cpu_count()
+    cpu_info['stats'] = cpu_stats()
     return cpu_info
 
 def get_boot_time():
-    return psutil.boot_time()
+    from psutil import boot_time
+    return boot_time()

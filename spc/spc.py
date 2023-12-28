@@ -40,6 +40,7 @@ class SPC():
 
     basic_data = [
         'board_id',
+        'board_name',
         'shutdown_request',
         'cpu_temperature',
     ]
@@ -182,7 +183,7 @@ class SPC():
         data = {}
         for i, name in enumerate(self.data_map):
             data[name] = result[i]
-        data['board_id'] = self.device.name
+        data['board_name'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
         data['is_usb_plugged_in'] = data['is_usb_plugged_in'] == 1
         # data['power_source'] = 'Battery' if data['power_source'] == 1 else 'USB'

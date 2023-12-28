@@ -17,7 +17,7 @@ def main():
         print('\033[?25l', end='', flush=True) # cursor invisible
 
         
-        print(f"Board name:               {data_buffer['board_id']:<20s}")
+        print(f"Board name:               {data_buffer['board_name']:<20s}")
         print(f"Firmware Version:         {spc.read_firmware_version():<20s}")
         print(f"VCC voltage:              {str(spc._read_data('vcc_voltage'))+' mV':<10s}")
 

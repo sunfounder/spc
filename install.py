@@ -15,6 +15,7 @@ DEPENDENCIES = [
     "python3-setuptools",
     "python3-venv",
     "libjpeg-dev", # for Pillow
+    "wget",
 ]
 
 SPC_DASHBOARD_DOWNLOAD_LINK = "https://github.com/sunfounder/spc-dashboard/releases/latest/download/spc-dashboard.zip"

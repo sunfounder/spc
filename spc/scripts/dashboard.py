@@ -3,6 +3,7 @@
 import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from spc.spc import SPC
+from spc.ha_api import HA_API
 import json
 
 from spc.config import Config

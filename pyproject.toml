@@ -20,9 +20,8 @@ dynamic = ["version"]
 [dependencies]
 python = "^3.9"
 paho-mqtt = "^1.6.1"
-smbus2 = "^0.4.3"
-requests = "^2.26.0"
 smbus2 = "^0.4.1"
+requests = "^2.26.0"
 rpi_ws281x = "^1.4.0"
 pillow = { version = "^8.4.0", extras = ["jpeg:disable"] }
 psutil = "^5.8.0"

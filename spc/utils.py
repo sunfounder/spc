@@ -2,7 +2,13 @@ import sys
 
 class Logger(object):
     def __init__(self, script_name="CORE", log_file="/opt/spc/log"):
+        import os
         self.script_name = script_name
+        # check if file exist
+        if not os.path.exists(log_file):
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            with open(log_file, 'w') as file:
+                file.write('')
         self.log_file = log_file
 
     def __call__(self, msg: str = None, level='DEBUG', end='\n', flush=False, timestampEnable=True):

@@ -125,6 +125,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             data['disk'] = get_disks_info()
             data['network'] = get_network_info()
             data['boot_time'] = get_boot_time()
+        elif command == 'get-config':
+            data = config.get_all()
         return json.dumps({"data": data})
 
     def handle_post(self, command, payload):
@@ -134,6 +136,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             spc.set_fan_mode(data)
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
+        elif command == 'set-config':
+            for section_name in data:
+                section = data[section_name]
+                for key in section:
+                    value = section[key]
+                    config.set(section_name, key, value)
 
     def log_message(self, format, *args):
         msg = format % args

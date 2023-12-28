@@ -40,12 +40,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Date', self.date_time_string())
 
     def do_GET(self):
-        global last_get_all
-        if last_get_all:
-            self.send_response(200, is_log=False)
-        else:
-            last_get_all = True
-            self.send_response(200, is_log=True)
+        # global last_get_all
+        # if last_get_all:
+        #     self.send_response(200, is_log=False)
+        # else:
+        #     last_get_all = True
+        #     self.send_response(200, is_log=True)
 
         self.send_header('Access-Control-Allow-Origin', '*')
         response = None
@@ -53,6 +53,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             # 处理API请求
             self.send_header('Content-type', 'application/json')
             self.end_headers()
+            self.send_response(200)
             command = self.path[len(self.api_prefix):]
             response = self.handle_get(command)
             self.wfile.write(response.encode())
@@ -60,6 +61,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             # 处理其他请求
             self.send_header('Content-type', 'text/html')
             self.end_headers()
+            self.send_response(200)
             with open(f"{STATIC_URL}index.html", 'r') as f:
                 response = f.read()
                 self.wfile.write(response.encode())
@@ -74,16 +76,16 @@ class RequestHandler(BaseHTTPRequestHandler):
                     'png': 'image/png'
                 }
                 extension = filename.split('.')[-1]
-                self.send_response(200)
                 self.send_header('Content-type', content_type.get(extension, 'text/plain'))
                 self.end_headers()
+                self.send_response(200)
                 with open(f"{STATIC_URL}{filename}", 'rb') as file:
                     self.wfile.write(file.read())
             except FileNotFoundError:
                 log('File not found: %s' % filename, level='ERROR')
-                self.send_response(404)
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
+                self.send_response(404)
                 self.wfile.write(b'File not found: %s' % filename.encode())
     
     def do_POST(self):

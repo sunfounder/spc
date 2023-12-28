@@ -2,8 +2,6 @@
 
 import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import os
-from typing import Any
 from spc.spc import SPC
 import json
 
@@ -14,6 +12,7 @@ log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
 
 spc = SPC()
+ha = HA_API()
 config = Config()
 
 PORT = config.getint('dashboard', 'port', default=34001)
@@ -125,6 +124,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             data['disk'] = get_disks_info()
             data['network'] = get_network_info()
             data['boot_time'] = get_boot_time()
+            if ha.is_homeassistant_addon():
+                data['network']["type"] = ha.get_network_connection_type()
         elif command == 'get-config':
             data = config.get_all()
         return json.dumps({"data": data})

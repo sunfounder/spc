@@ -54,6 +54,19 @@ class HA_API:
             IPs[name] = ip
         return IPs
 
+    def get_network_connection_type(self):
+        connection_type_map = {
+            "ethernet": "Wired",
+            "wireless": "Wireless",
+        }
+        connection_type = []
+        data = self.get("network/info")
+        interfaces = data["data"]["interfaces"]
+        for interface in interfaces:
+            if interface['connected']:
+                connection_type.append(connection_type_map[interface['type']])
+        return connection_type
+
     def shutdown(self):
         '''shutdown homeassistant host'''
         log(msg="Shutdown home assistant host", level='DEBUG')

@@ -191,12 +191,18 @@ def shutdown_control(data):
             log(f"shutdown_request code: {shutdown_request}", level="INFO")
     if shutdown_request == 1:
         log("Low power shutdown.", level="INFO")
-        os.system("sudo poweroff")
         time.sleep(1)
+        if ha.is_homeassistant_addon():
+            ha.shutdown()
+        else:
+            os.system("sudo poweroff")
     elif shutdown_request == 2:
         log("Manual button shutdown.", level="INFO")
-        os.system("sudo poweroff")
         time.sleep(1)
+        if ha.is_homeassistant_addon():
+            ha.shutdown()
+        else:
+            os.system("sudo poweroff")
 
 
 def draw_oled(data):

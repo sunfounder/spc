@@ -37,8 +37,6 @@ class HA_API:
         except Exception as e:
             log(msg="home assistant get error: " + e, level='DEBUG')
 
-
-
     def get_ip(self):
         IPs = {}
         data = self.get("network/info")

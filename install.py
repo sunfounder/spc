@@ -15,6 +15,7 @@ DEPENDENCIES = [
     "python3-setuptools",
     "python3-venv",
     "libjpeg-dev", # for Pillow
+    "i2c-tools",
     "wget",
 ]
 

@@ -26,6 +26,7 @@ parser.add_argument("-c", "--rgb-color", help="RGB color")
 parser.add_argument("-p", "--rgb-speed", help="RGB speed")
 parser.add_argument("-f", "--rgb-pwm-frequency", type=int, help="RGB PWM frequency")
 parser.add_argument("-i", "--rgb-pin", choices=["spi", "10", "pwm", "12", "pcm", "21"], help="RGB pin")
+parser.add_argument("--data-logger-interval", help="Data logger interval")
 
 args = parser.parse_args()
 
@@ -67,10 +68,14 @@ def start():
             "--ssl-ca-cert": args.ssl_ca_cert,
             "--ssl-cert": args.ssl_cert
         }
+    data_logger_options = {
+        "--interval": args.data_logger_interval
+    }
     runcommand("spc_mqtt_client", options=mqtt_options)
     runcommand("spc_auto start", options=auto_options)
     runcommand("spc_dashboard", options=dashboard_options)
     runcommand("influxdb")
+    runcommand("spc_data_logger", options=data_logger_options)
     if args.foreground:
         try:
             while True:
@@ -91,6 +96,7 @@ def stop():
     stop_process("spc_auto")
     stop_process("spc_dashboard")
     stop_process("influxdb")
+    stop_process("spc_data_logger")
 
 if args.command == "start":
     start()

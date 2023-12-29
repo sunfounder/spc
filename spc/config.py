@@ -33,6 +33,9 @@ class Config:
             "ssl_ca_cert": "",
             "ssl_cert": ""
         },
+        "data-logger": {
+            "interval": 1,
+        }
     }
 
     def __init__(self, config_file=default_config_file):

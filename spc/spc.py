@@ -27,7 +27,7 @@ class SPC():
         'battery_voltage': (11, 2, '>H'),
         'battery_current': (13, 2, '>h'),
         'battery_percentage': (15, 1, 'B'),
-        'battery_capactiy': (16, 2, '>H'),
+        'battery_capacity': (16, 2, '>H'),
         #
         'power_source': (18, 1, 'B'),
         'is_usb_plugged_in': (19, 1, 'B'),
@@ -48,7 +48,7 @@ class SPC():
         'battery': [
             'battery_voltage',
             'battery_current',
-            'battery_capactiy',
+            'battery_capacity',
             'battery_percentage',
             'is_charging',
         ],

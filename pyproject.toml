@@ -24,6 +24,7 @@ dependencies = [
   'rpi_ws281x',
   'pillow',
   'psutil',
+  'influxdb',
 ]
 
 [tool.setuptools]

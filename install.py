@@ -17,6 +17,7 @@ DEPENDENCIES = [
     "libjpeg-dev", # for Pillow
     "i2c-tools",
     "wget",
+    "influxdb",
 ]
 
 SPC_DASHBOARD_DOWNLOAD_LINK = "https://github.com/sunfounder/spc-dashboard/releases/latest/download/spc-dashboard.zip"
@@ -215,7 +216,7 @@ def install():
     do(msg=f"unzip spc dashboard",
         cmd=f'unzip /tmp/spc-dashboard.zip -d /tmp/spc-dashboard')
     do(msg=f"copy spc dashboard",
-        cmd=f'cp -r /tmp/spc-dashboard/* {working_dir}/www')
+        cmd=f'cp -r /tmp/spc-dashboard/spc-dashboard/* {working_dir}/www')
     do(msg=f"remove tmp files",
         cmd=f'rm -rf /tmp/spc-dashboard*')
 

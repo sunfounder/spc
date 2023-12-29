@@ -84,6 +84,7 @@ def start():
     runcommand("spc_mqtt_client", options=mqtt_options, background=True)
     runcommand("spc_auto start", options=auto_options, background=True)
     runcommand("spc_dashboard", options=dashboard_options, background=True)
+    runcommand("spc_rtc", options=None, background=True)
 
 def stop_process(name):
     pid = os.popen(f'ps -ef | grep "{name}" | awk "{{print $2}}"').read()

@@ -33,7 +33,7 @@ def runcommand(command, options={}, venv=True):
     for key in options:
         if options[key] is not None:
             command += f" {key} {options[key]}"
-    # command = f"bash -c '{command}'"
+    command += " &"
     if venv:
         command = f"source {WORKING_DIR}/venv/bin/activate && {command}"
     command = f"bash -c '{command}'"

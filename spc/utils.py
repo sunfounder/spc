@@ -74,8 +74,8 @@ def get_network_speed():
     upload_speed = bytes_sent / interval
     download_speed = bytes_recv / interval
 
-    network_speed['upload_speed'] = upload_speed
-    network_speed['download_speed'] = download_speed
+    network_speed['upload_speed'] = round(upload_speed)
+    network_speed['download_speed'] = round(download_speed)
 
     net_io_counter = current_net_io_counter
     net_io_counter_time = current_net_io_counter_time

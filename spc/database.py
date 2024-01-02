@@ -26,8 +26,8 @@ class DB:
         result = self.client.query(query)
         return list(result.get_points())
 
-    def get_latest_data(self, measurement, n=1):
-        query = f"SELECT * FROM {measurement} ORDER BY time DESC LIMIT {n}"
+    def get_latest_data(self, measurement, key="*", n=1):
+        query = f"SELECT {key} FROM {measurement} ORDER BY time DESC LIMIT {n}"
         result = self.client.query(query)
         return list(result.get_points())
 

@@ -151,14 +151,19 @@ class RequestHandler(BaseHTTPRequestHandler):
         data = json.loads(payload)['data']
         if command == 'set-fan-mode':
             spc.set_fan_mode(data)
+            db.set('history', {'fan_mode': data})
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
+            db.set('history', {'fan_state': data})
         elif command == 'set-config':
+            db_config = {}
             for section_name in data:
                 section = data[section_name]
                 for key in section:
                     value = section[key]
                     config.set(section_name, key, value)
+                    db_config[f"{section_name}.{key}"] = value
+            db.set('config', db_config)
 
     def log_message(self, format, *args):
         msg = format % args

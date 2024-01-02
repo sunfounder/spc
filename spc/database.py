@@ -21,8 +21,8 @@ class DB:
         ]
         self.client.write_points(json_body)
 
-    def get_data_by_time_range(self, measurement, start_time, end_time):
-        query = f"SELECT * FROM {measurement} WHERE time >= '{start_time}' AND time <= '{end_time}'"
+    def get_data_by_time_range(self, measurement, start_time, end_time, key="*"):
+        query = f"SELECT {key} FROM {measurement} WHERE time >= '{start_time}' AND time <= '{end_time}'"
         result = self.client.query(query)
         return list(result.get_points())
 

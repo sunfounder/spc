@@ -1,7 +1,8 @@
 
 from spc.spc import SPC
 from spc.database import DB
-from spc.utils import Logger, get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
+from spc.utils import Logger
+from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 import argparse
 from spc.config import Config
 import time

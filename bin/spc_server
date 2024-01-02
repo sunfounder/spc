@@ -89,7 +89,7 @@ def stop_process(name):
     pid = os.popen(f'ps -ef | grep "{name}" | awk "{{print $2}}"').read()
     pid = " ".join(pid.split("\n")[:-2])
     command = f"kill {pid}"
-    runcommand(command)
+    runcommand(command, venv=False)
 
 def stop():
     stop_process("spc_mqtt_client")

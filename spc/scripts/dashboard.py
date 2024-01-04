@@ -57,7 +57,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            command = self.path[len(self.api_prefix):]
+            command = parsed_path.path[len(self.api_prefix):]
             response = self.handle_get(command, query_params)
             self.wfile.write(response.encode())
         elif self.path in self.routes:
@@ -136,12 +136,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif command == 'get-history':
             n = 1
             if 'n' in param:
-                n = param['n']
+                n = int(param['n'][0])
             data = db.get_latest_data('history', n=n)
         elif command == "get-time-range":
             if 'start' in param and 'end' in param:
-                start = param['start']
-                end = param['end']
+                start = int(param['start'][0])
+                end = int(param['end'][0])
                 data = db.get_data_by_time_range('history', start, end)
             else:
                 data = "ERROR, start or end not found"

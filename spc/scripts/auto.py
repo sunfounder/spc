@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import time
 
 from argparse import ArgumentParser
 from spc.spc import SPC
@@ -14,15 +15,16 @@ from spc.ha_api import HA_API
 from spc.ws2812 import WS2812, RGB_styles
 from spc.configtxt import ConfigTxt
 
-
-import time
-import os
-
+# log 
+# =================================================================
 log = Logger("AUTO")
-spc = SPC()
-oled = OLED()
-ha = HA_API()
+
+# config
+# =================================================================
 config = Config()
+
+# Argument Parser
+# =================================================================
 parser = ArgumentParser()
 parser.add_argument("command", choices=["start", "restart"], nargs="?", help="Command")
 parser.add_argument("-r", "--reflash-interval", type=float, default=config.getfloat("auto",
@@ -45,49 +47,11 @@ parser.add_argument("-f", "--rgb-pwm-frequency", type=int,
                     default=config.getint("auto", "rgb_pwm_frequency"), help="RGB PWM frequency")
 parser.add_argument("-i", "--rgb-pin", type=int,
                     choices=[10, 12, 21], default=config.getint("auto", "rgb_pin"), help="RGB pin")
+
 args = parser.parse_args()
 
-AUTO_FAN_LEVELS = [
-    {
-        "name": "OFF",
-        "low": 0,
-        "high": 55,
-        "percent": 0,
-    }, {
-        "name": "LOW",
-        "low": 45,
-        "high": 65,
-        "percent": 40,
-    }, {
-        "name": "MEDIUM",
-        "low": 55,
-        "high": 75,
-        "percent": 80,
-    }, {
-        "name": "HIGH",
-        "low": 65,
-        "high": 100,
-        "percent": 100,
-    },
-]
-
-last_shutdown_request = 0
-fan_state = config.getboolean("auto", "fan_state")
-fan_speed = config.getint("auto", "fan_speed")
-last_fan_state = None
-last_fan_speed = None
-auto_fan_level = 0
-auto_fan_initial = True
-oled_timer_start = 0
-ip = "DISCONNECT"
-data = None
-rgb = None
 has_change = False
 need_reboot = False
-
-ip_detect_interval = 2000 # ms
-ip_detect_start_time = 0
-
 
 def handle_param_change():
     global has_change, need_reboot
@@ -115,6 +79,47 @@ def handle_param_change():
                 config_txt.comment("dtoverlay=i2s-mmap")
             need_reboot = True
 
+# spc
+# =================================================================
+spc = SPC()
+data = None
+
+# init HA
+# =================================================================
+ha = HA_API()
+
+# fan auto control
+# =================================================================
+AUTO_FAN_LEVELS = [
+    {
+        "name": "OFF",
+        "low": 0,
+        "high": 55,
+        "percent": 0,
+    }, {
+        "name": "LOW",
+        "low": 45,
+        "high": 65,
+        "percent": 40,
+    }, {
+        "name": "MEDIUM",
+        "low": 55,
+        "high": 75,
+        "percent": 80,
+    }, {
+        "name": "HIGH",
+        "low": 65,
+        "high": 100,
+        "percent": 100,
+    },
+]
+
+fan_state = config.getboolean("auto", "fan_state")
+fan_speed = config.getint("auto", "fan_speed")
+last_fan_state = None
+last_fan_speed = None
+auto_fan_level = 0
+auto_fan_initial = True
 
 def fan_auto_control(data):
     global fan_speed, last_fan_speed, auto_fan_level, auto_fan_initial
@@ -122,7 +127,7 @@ def fan_auto_control(data):
     if "fan" not in spc.device.peripherals:
         return
 
-    # read fan_state
+    # read fan_state from config file
     _fan_state = config.getboolean("auto", "fan_state")
     # if the fan is off
     if _fan_state is False:
@@ -133,7 +138,7 @@ def fan_auto_control(data):
             return
 
     # if the fan is on, and fan_mode is auto, adjust fan speed based on  CPU temperature
-    # read fan_mode
+    # read fan_mode from config file
     _fan_mode = config.get('auto', 'fan_mode')
     # if fan_mode is not auto
     if _fan_mode != 'auto':
@@ -178,26 +183,29 @@ def fan_auto_control(data):
         log(f"set fan speed: {speed}", level="INFO")
     
         auto_fan_initial = False
-    
 
-def shutdown_control(data):
-    global last_shutdown_request
-    # --- shutdown request ---
-    shutdown_request = data["shutdown_request"]
-    # print(shutdown_request)
-    if last_shutdown_request != shutdown_request:
-        last_shutdown_request = shutdown_request
-        if last_shutdown_request != 255:
-            log(f"shutdown_request code: {shutdown_request}", level="INFO")
-    if shutdown_request == 1:
-        log("Low power shutdown.", level="INFO")
-        os.system("sudo poweroff")
-        time.sleep(1)
-    elif shutdown_request == 2:
-        log("Manual button shutdown.", level="INFO")
-        os.system("sudo poweroff")
-        time.sleep(1)
 
+# oled
+# =================================================================
+# --- oled init ---
+has_oled = False
+if 'oled' in spc.device.peripherals:
+    has_oled = True
+
+if has_oled:
+    try:
+        oled = OLED() # if init failed, oled == None
+        if oled is not None:
+            log('oled init success')
+    except Exception as e:
+        log(f"oled init failed: {e}")
+
+# --- oled control ---
+oled_timer_start = 0
+ip = "DISCONNECT"
+
+ip_detect_interval = 2000 # ms
+ip_detect_start_time = 0
 
 def draw_oled(data):
     global ip, ip_detect_start_time
@@ -209,16 +217,11 @@ def draw_oled(data):
     if not oled.is_ready():
         return
 
-    # Currently iled is on for:
-    # current_on_for = time.time() - oled_timer_start
-    # if oled_on_for > 0 and current_on_for > oled_on_for:
-    #     oled.off()
-    #     return
-
-    
+    # ---- get system status data ---- 
+    # cpu usage
     cpu_usage = get_cpu_usage()
+    # cpu temperature
     cpu_temperature = data["cpu_temperature"]
-    oled.clear()
     # RAM
     ram_stats = get_ram_info()
     ram_total = round(int(ram_stats[0]) / 1024/1024, 1)
@@ -229,63 +232,66 @@ def draw_oled(data):
     disk_total = str(disk_stats[0])
     disk_used = str(disk_stats[1])
     disk_percent = float(disk_stats[3])
+   
+    disk_unit = 'G1'
+    if DISK_total >= 1000:
+        disk_unit = 'T'
+        DISK_total = round(DISK_total/1000, 3)
+        DISK_used = round(DISK_used/1000, 3)
+    elif DISK_total >= 100:
+        disk_unit = 'G2'
 
-    # display info
-    cpu_info_rect = Rect(0, 29, 34, 8)
-    temp_info_rect = Rect(0, 38, 34, 8)
-    ip_rect = Rect(40, 0, 87, 10)
-    ram_info_rect = Rect(40, 17, 87, 10)
-    ram_rect = Rect(40, 29, 87, 10)
-    rom_info_rect = Rect(40, 41, 87, 10)
-    rom_rect = Rect(40, 53, 87, 10)
-
-    # get ip if disconnected
+    # get ip
     if ip == "DISCONNECT" \
         or (time.time() - ip_detect_start_time > ip_detect_interval):
         ip = get_ip_address()
+        ip_detect_start_time = time.time()
 
-
+    # ---- display info ----
+    oled.clear()
+    cpu_info_rect = Rect(0, 29, 34, 8)
+    temp_info_rect = Rect(0, 38, 34, 8)
+    ip_rect = Rect(46, 0, 87, 10)
+    ram_info_rect = Rect(45, 17, 87, 10)
+    ram_rect = Rect(45, 29, 87, 10)
+    rom_info_rect = Rect(45, 41, 87, 10)
+    rom_rect = Rect(45, 53, 87, 10)
     # draw CPU usage
     oled.draw_text("CPU", 6, 0)
-    oled.draw.pieslice((0, 12, 30, 42), start=180,
-                       end=0, fill=0, outline=1)
-    oled.draw.pieslice((0, 12, 30, 42), start=180, end=int(
-        180+180*cpu_usage*0.01), fill=1, outline=1)
-    # Clear the CPU info area
+    oled.draw.pieslice((0, 12, 30, 42), start=180, end=0, fill=0, outline=1)
+    oled.draw.pieslice((0, 12, 30, 42), start=180, end=int(180+180*cpu_usage*0.01), fill=1, outline=1)
     oled.draw.rectangle(cpu_info_rect.rect(), outline=0, fill=0)
     oled.draw_text('{:^5.1f} %'.format(cpu_usage), 2, 27)
-
     # Temp
-    # Clear the temperature info area
     oled.draw.rectangle(temp_info_rect.rect(), outline=0, fill=0)
     if args.temperature_unit == 'C':
         oled.draw_text('{:>4.1f} \'C'.format(cpu_temperature), 2, 38)
-        oled.draw.pieslice((0, 33, 30, 63), start=0,
-                           end=180, fill=0, outline=1)
-        oled.draw.pieslice((0, 33, 30, 63), start=int(
-            180-180*cpu_temperature * 0.01), end=180, fill=1, outline=1)
+        oled.draw.pieslice((0, 33, 30, 63), start=0, end=180, fill=0, outline=1)
+        oled.draw.pieslice((0, 33, 30, 63), start=int(180-180*cpu_temperature * 0.01), end=180, fill=1, outline=1)
     elif args.temperature_unit == 'F':
         cpu_temperature = cpu_temperature * 1.8 + 32
-        # oled.draw_text('{:>4.1f} \'F'.format(cpu_temperature), 2, 38)
         oled.draw_text('{:>4.1f}'.format(cpu_temperature), 2, 38)
         oled.draw_text('\'F'.format(cpu_temperature), 26, 38)
-        oled.draw.pieslice((0, 33, 30, 63), start=0,
-                           end=180, fill=0, outline=1)
+        oled.draw.pieslice((0, 33, 30, 63), start=0, end=180, fill=0, outline=1)
         pcent = (cpu_temperature-32)/1.8
-        oled.draw.pieslice((0, 33, 30, 63), start=int(
-            180-180*pcent*0.01), end=180, fill=1, outline=1)
+        oled.draw.pieslice((0, 33, 30, 63), start=int(180-180*pcent*0.01), end=180, fill=1, outline=1)
     # RAM
-    # oled.draw_text('RAM: {}/{} GB'.format(ram_used,
-    #                                       ram_total), *ram_info_rect.coord())
-    # # draw_text('{:>5.1f}'.format(RAM_usage)+' %',92,0)
-    oled.draw_text(f'RAM: {ram_used:3.1f} / {ram_total:3.1f} G', *ram_info_rect.coord())  
+    oled.draw_text(f'RAM:  {ram_used:^4.1f}/{ram_total:^4.1f} G',*ram_info_rect.coord())
     oled.draw.rectangle(ram_rect.rect(), outline=1, fill=0)
     oled.draw.rectangle(ram_rect.rect(ram_usage), outline=1, fill=1)
     # Disk
-    disk_used = 100.12
-    disk_total = 360.12
-
-    oled.draw_text(f'ROM: {disk_used:4.1f} / {disk_total:4.1f} G', *rom_info_rect.coord())  
+    if disk_unit == 'G1':
+        _dec = 1
+        if disk_used < 10:
+            _dec = 2              
+        oled.draw_text(f'DISK: {disk_used:>2.{_dec}f}/{disk_total:<2.1f} G', *rom_info_rect.coord())
+    elif disk_unit == 'G2':
+        _dec = 0
+        if disk_used < 100:
+            _dec = 1
+        oled.draw_text(f'DISK: {disk_used:>3.{_dec}f}/{disk_total:<3.0f} G', *rom_info_rect.coord())
+    elif disk_unit == 'T':
+        oled.draw_text(f'DISK: {disk_used:>2.2f}/{disk_total:<2.2f} T', *rom_info_rect.coord())
 
     oled.draw.rectangle(rom_rect.rect(), outline=1, fill=0)
     oled.draw.rectangle(rom_rect.rect(disk_percent), outline=1, fill=1)
@@ -298,8 +304,79 @@ def draw_oled(data):
     # draw the image buffer.
     oled.display()
 
+# rgb
+# =================================================================
+# --- check and init rgb ---
+rgb = None
+if 'ws2812' in spc.device.peripherals:
+    try:
+        rgb = WS2812(LED_COUNT=16, LED_PIN=args.rgb_pin,
+            LED_FREQ_HZ=args.rgb_pwm_frequency*1000)
+        log('ws2812 init success')
+    except Exception as e:
+        log(f"ws2812 init failed: {e}")
 
-def rgb_control():
+# --- rgb --- control
+rgb_swtich = False
+rgb_style = None
+rgb_color = None
+rgb_speed = 0
+rgb_has_change = False
+rgb_retry_flag = False
+# rgb_thread_lock = threading.Lock()
+
+def rgb_thread_loop():
+    while True:
+        try:
+            if rgb_swtich == False:
+                rgb.clear()
+                while not rgb_swtich:
+                    time.sleep(.1)
+            else:
+                rgb.clear()
+                # display will loop until rgb.stop singal
+                rgb.display(rgb_style, rgb_color, rgb_speed)
+
+            rgb_retry_flag = False
+        except Exception as e:
+            if rgb_retry_flag == False:
+                rgb_retry_flag = True
+                log(f"rgb error: {e}")
+            # --- retrying ---
+            time.sleep(1)
+            continue
+
+
+def rgb_control(data):
+    global rgb_swtich, rgb_style, rgb_color, rgb_speed, rgb_has_change
+    if 'ws2812' not in spc.device.peripherals:
+        return
+    if args.rgb_switch != True:
+        return
+    if rgb is None:
+        return
+
+    # read rgb config from file
+    _rgb_switch = config.getboolean("auto", "rgb_switch", default=False)
+    _rgb_style = config.config.get("auto", "rgb_style")
+    _rgb_color = config.config.get("auto", "rgb_color")
+    _rgb_speed = config.config.getint("auto", "rgb_speed")
+    # if change
+    if (_rgb_switch != rgb_swtich or \
+        _rgb_style != rgb_style or \
+        _rgb_color != rgb_color or \
+        _rgb_speed != rgb_speed 
+        ):
+        rgb_swtich = _rgb_switch
+        rgb_style = _rgb_style
+        rgb_color = _rgb_color
+        rgb_speed = _rgb_speed
+        # rgb_has_change = True
+        rgb.stop_loop()
+    else:
+        has_change = False
+
+def rgb_work():
     if args.rgb_switch != True:
         return
     log('rgb_control')
@@ -312,68 +389,61 @@ def rgb_control():
     except Exception as e:
         log(e, level='rgb_strip')
 
+# shutdown_singal_control
+# =================================================================
+last_shutdown_request = 0
 
+def shutdown_singal_control(data):
+    global last_shutdown_request
+    # --- read shutdown request ---
+    shutdown_request = int(data["shutdown_request"])
+    # print(shutdown_request)
+    if last_shutdown_request != shutdown_request:
+        last_shutdown_request = shutdown_request
+        if last_shutdown_request != 255:
+            log(f"shutdown_request code: {shutdown_request}", level="INFO")
+    if shutdown_request == 1:
+        log("Low power shutdown.", level="INFO")
+    elif shutdown_request == 2:
+        log("Manual button shutdown.", level="INFO")
 
-def background_process():
-    from multiprocessing import Process
+    if shutdown_request in [1, 2]:
+        # TODO: Handler before ending
+        os.system("sudo poweroff")
+        time.sleep(1)
 
-    sys.stdout = open(os.devnull, 'w')
+# usb_unplugged_handler
+# =================================================================
+last_usb_state = False # True, pulgged in; False, unpulgged in
 
-    # def _process():
-    #     with open(os.devnull, 'w') as devnull:
-    #         foreground_process()
+def usb_unplugged_handler(data):
+    global last_usb_state, usb_unplugged_shutdown
 
-    _p = Process(target=foreground_process)
-    _p.daemon = False
-    _p.start()
+    if 'battery' not in spc.device.peripherals:
+        return
 
-    sys.exit(0)
+    usb_state = data['is_usb_plugged_in']
 
-
-def foreground_process():
-    global rgb
-    retry_flag = False
-
-    # Check if device support WS2812
-    if 'ws2812' in spc.device.peripherals:
-        rgb = WS2812(LED_COUNT=16, LED_PIN=args.rgb_pin,
-                    LED_FREQ_HZ=args.rgb_pwm_frequency*1000)
-
-        # rgb_strip thread
-        if args.rgb_switch == True:
-            rgb_thread = threading.Thread(target=rgb_control)
-            rgb_thread.daemon = True
-            rgb_thread.start()
-        else:
-            rgb.clear()
-
-    log(f'SPC auto started', level='INFO')
-
-    while True:
-        try:
-            data = spc.read_all()
-            shutdown_control(data)
-            fan_auto_control(data)
-            draw_oled(data)
-            time.sleep(float(args.reflash_interval))
-            retry_flag = False
-        except Exception as e:
-            if retry_flag == False:
-                retry_flag = True
-                log(e, level='ERROR')
-                log(f'retrying ...', level='DEBUG')
-            # retrying
-            time.sleep(args.retry_interval)
-            continue
+    if usb_state == True:
+        last_usb_state = True
+    else:
+        if last_usb_state == True:
+            last_usb_state = False
+            _shutdown_pct = spc.read_shutdown_battery_pct()
+            _current_pct= data['battery_percentage']
+            if _current_pct < _shutdown_pct:
+                log(f"Usb unplugged, battery is below {_shutdown_pct}, shutdown!", level="INFO")
+                # TODO: Handler before ending
+                os.system("sudo poweroff")
+                time.sleep(1)
 
 # main
 # =================================================================
 def main():
+    # --- param handler ---
     handle_param_change()
     if need_reboot == True:
-        print(
-            "\033[1;32mWhether to restart for the changes to take effect(Y/N):\033[0m"
-        )
+        print("\033[1;32mWhether to restart for the changes to take effect(Y/N):\033[0m")
         while True:
             key = input()
             if key == 'Y' or key == 'y':
@@ -384,21 +454,38 @@ def main():
                 return
             else:
                 continue
-    # if args.command == 'start' or args.command == 'restart' or has_change:
-    #     run_command("sudo kill $(ps aux | grep \'ezblock-reset-service\' | awk \'{ print $2 }\'")
-    # else:
-    #     return
-    # if args.command == 'start':
-    #     run_command("sudo kill $(ps aux | grep \'spc_auto\' | awk \'{ print $2 }\')")
-    # else:
-    #     return
+
+    # --- auto control loop ---
     if args.command != 'start':
         return
-    # background_process()
-    foreground_process()
+
+    log(f'SPC auto started', level='INFO')
+    retry_flag = False
+
+    rgb_thread = threading.Thread(target=rgb_thread_loop)
+    rgb_thread.daemon = True
+    rgb_thread.start()
+
+    while True:
+        try:
+            data = spc.read_all()
+            shutdown_singal_control(data)
+            usb_unplugged_handler(data)
+            fan_auto_control(data)
+            draw_oled(data)
+            rgb_control(data)
+            time.sleep(float(args.reflash_interval))
+            retry_flag = False
+        except Exception as e:
+            if retry_flag == False: # print error once
+                retry_flag = True
+                log(e, level='ERROR')
+                log(f'retrying ...', level='DEBUG')
+            # retrying
+            time.sleep(args.retry_interval)
+            continue
+
 
 if __name__ == "__main__":
-    # try:
     main()
-    # except Exception as e:
-    #     print(e)
+

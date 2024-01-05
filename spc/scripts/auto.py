@@ -190,9 +190,6 @@ def fan_auto_control(data):
 # --- oled init ---
 has_oled = False
 if 'oled' in spc.device.peripherals:
-    has_oled = True
-
-if has_oled:
     try:
         oled = OLED() # if init failed, oled == None
         if oled is not None:
@@ -462,18 +459,23 @@ def main():
     log(f'SPC auto started', level='INFO')
     retry_flag = False
 
-    rgb_thread = threading.Thread(target=rgb_thread_loop)
-    rgb_thread.daemon = True
-    rgb_thread.start()
+    if "ws2812" in spc.device.peripherals:
+        rgb_thread = threading.Thread(target=rgb_thread_loop)
+        rgb_thread.daemon = True
+        rgb_thread.start()
 
     while True:
         try:
             data = spc.read_all()
             shutdown_singal_control(data)
-            usb_unplugged_handler(data)
-            fan_auto_control(data)
-            draw_oled(data)
-            rgb_control(data)
+            if "usb_in" in spc.device.peripherals:
+                usb_unplugged_handler(data)
+            if "fan" in spc.device.peripherals:
+                fan_auto_control(data)
+            if "oled" in spc.device.peripherals:
+                draw_oled(data)
+            if "ws2812" in spc.device.peripherals:
+                rgb_control(data)
             time.sleep(float(args.reflash_interval))
             retry_flag = False
         except Exception as e:

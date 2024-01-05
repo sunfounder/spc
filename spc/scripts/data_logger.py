@@ -57,7 +57,7 @@ def main():
                 data[key] = int(value)
 
         db.set('history', data)
-        log("Set data: {data}")
+        log(f"Set data: {data}")
         # db.set('test', {"aa":"true"})
 
         time.sleep(args.interval)

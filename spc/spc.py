@@ -2,9 +2,14 @@
 from .i2c import I2C
 import struct
 from .config import Config
-from .system_status import *
+from .utils import Logger
+from .system_status import get_cpu_temperature
 from .devices import Devices
 import sys
+
+# init log
+# =================================================================
+log = Logger("SPC")
 
 # class SPC()
 # =================================================================
@@ -14,6 +19,8 @@ class SPC():
 
     BATTERY = 1
     USB = 0
+
+    SHUTDOWM_BATTERY_MIN = 10
 
     data_format = '>BHHhHhHhBHBBBBB'
     total_length = 23
@@ -33,9 +40,12 @@ class SPC():
         'is_usb_plugged_in': (19, 1, 'B'),
         'is_charging': (20, 1, 'B'),
         'fan_speed': (21, 1, 'B'),
-        'shutdown_request': (22, 1, '>B'),
+        'shutdown_request': (22, 1, 'B'),
+        #
+        # must be continuous in read_all()
     }
-    rtc_time_map = (23, 7, '>BBBBBBB')
+
+    rtc_time_map = (23, 7, '>BBBBBBB')  # Detach from data_map to not read on read_all
     firmware_version_map = (30, 3, '>BBB')
 
     basic_data = [
@@ -51,6 +61,7 @@ class SPC():
             'battery_capacity',
             'battery_percentage',
             'is_charging',
+            'shutdown_battery_pct',
         ],
         'usb_in': [
             'usb_voltage',
@@ -76,10 +87,9 @@ class SPC():
 
     def __init__(self, address=I2C_ADDRESS):
         self.addr = address
-
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
-            raise IOError(f'Pironman U1 init error: I2C device not found at address 0x{self.addr:02X}')
+            raise IOError(f'SPC init error: I2C device not found at address 0x{self.addr:02X}')
 
         id = self._read_data('board_id')
         self.device = Devices(id)
@@ -90,10 +100,12 @@ class SPC():
         self.fan_speed = int(self.config.get('auto', 'fan_speed'))
         if self.fan_state:
             self.set_fan_speed(self.fan_speed)
+        # shutdown_battery_pct
+        self.read_shutdown_battery_pct()
 
     def _read(self, start, length):
         _retry = 5
-        for i in range(_retry):
+        for _ in range(_retry):
             try:
                 result = self.i2c.read_block_data(start, length)
                 break
@@ -108,8 +120,20 @@ class SPC():
 
         return result
 
-    def _write(self, name: str, value: list):
-        self.i2c.write_block_data(0, value)
+    def _write(self, start, value: list):
+        _retry = 5
+        for _ in range(_retry):
+            try:
+                self.i2c.write_block_data(start, value)
+                break
+            except TimeoutError:
+                time.sleep(.01)
+                continue
+            # other exceptions will be raised
+        else:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print(f"_write() TimeoutError: {exc_type} - {exc_value}")
+            raise
 
     def _read_data(self, name: str):
         _start, _len, _format = self.data_map[name]
@@ -166,6 +190,7 @@ class SPC():
         return int(result)
 
     def read_fan_mode(self) -> str:
+        self.fan_mode = self.config.get('auto', 'fan_mode')
         return self.fan_mode
 
     def read_board_id(self) -> int:
@@ -176,6 +201,22 @@ class SPC():
         result = self._read_data('shutdown_request')
         return int(result)
 
+    def read_shutdown_battery_pct(self) -> int:
+        try:
+            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=100))
+            if self.shutdown_battery_pct <= self.SHUTDOWM_BATTERY_MIN:
+                self.shutdown_battery_pct = self.SHUTDOWM_BATTERY_MIN
+                self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
+            elif self.shutdown_battery_pct > 100:
+                self.shutdown_battery_pct = 100
+                self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
+        except:
+            self.shutdown_battery_pct = 100
+            self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
+
+        return self.shutdown_battery_pct
+
+    
     def _read_all(self) -> dict:
         result = self._read(0, self.total_length)
         result = struct.unpack(self.data_format, bytes(result))
@@ -190,6 +231,7 @@ class SPC():
         data['cpu_temperature'] = get_cpu_temperature()
         data['fan_mode'] = self.fan_mode
         data['fan_state'] = self.fan_state
+        data['shutdown_battery_pct'] = self.shutdown_battery_pct
         return data
 
     def read_all(self) -> dict:
@@ -205,16 +247,17 @@ class SPC():
         return data
 
     def set_fan_speed(self, speed):
+        _start, _len = self.control_map['fan_speed']
         if speed <= 0:
             speed = 0
-            self._write('fan_speed', [0])
-            return
+            self._write(_start, [0])
+            return  # do not config
         elif speed > 100:
             speed = 100
 
         self.fan_speed = speed
         self.config.set('auto', 'fan_speed', self.fan_speed)
-        self._write('fan_speed', [speed])
+        self._write(_start, [speed])
 
     def set_fan_state(self, switch: bool):
         self.fan_state = switch
@@ -235,6 +278,14 @@ class SPC():
         self.fan_mode = mode
         self.config.set('auto', 'fan_mode', mode)
 
+    def set_shutdown_battery_pct(self, precentage):
+        if percentage <= self.SHUTDOWM_BATTERY_MIN:
+            percentage = self.SHUTDOWM_BATTERY_MIN
+        elif percentage > 100:
+            percentage = 100
+
+        self.shutdown_battery_pct = precentage
+        self.config.set('auto', 'shutdown_battery_pct', precentage)
 
     def set_rtc(self, date:list):
         '''
@@ -258,5 +309,3 @@ class SPC():
         result = struct.unpack(_format, bytes(result))
         _version = f"{result[0]}.{result[1]}.{result[2]}"
         return _version
-
-

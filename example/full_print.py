@@ -4,6 +4,7 @@ import time
 
 spc = SPC()
 
+RIGHT_STR_MAX_LEN = 20
 
 def main():
     while True:
@@ -16,28 +17,27 @@ def main():
         print("\033[H", end='')  # moves cursor to home position (0, 0)
         print('\033[?25l', end='', flush=True) # cursor invisible
 
-        
-        print(f"Board name:               {data_buffer['board_name']:<20s}")
-        print(f"Firmware Version:         {spc.read_firmware_version():<20s}")
-        print(f"VCC voltage:              {str(spc._read_data('vcc_voltage'))+' mV':<10s}")
+        print(f"Board name:               {data_buffer['board_id']:<{RIGHT_STR_MAX_LEN}s}")
+        print(f"Firmware Version:         {spc.read_firmware_version():<{RIGHT_STR_MAX_LEN}s}")
+        print(f"VCC voltage:              {str(spc._read_data('vcc_voltage'))+' mV':<{RIGHT_STR_MAX_LEN}s}")
 
         if ('battery'  in spc.device.peripherals):
-            print(f"Battery voltage:          {str(data_buffer['battery_voltage'])+' mV':<10s}")
-            print(f"Battery current:          {str(data_buffer['battery_current'])+' mA':<10s}")
-            print(f"Battery capactiy:         {str(data_buffer['battery_capactiy'])+' mAh':<10s}")
-            print(f"Battery percentage:       {str(data_buffer['battery_percentage'])+' %':<10s}")
+            print(f"Battery voltage:          {str(data_buffer['battery_voltage'])+' mV':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"Battery current:          {str(data_buffer['battery_current'])+' mA':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"Battery capactiy:         {str(data_buffer['battery_capactiy'])+' mAh':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"Battery percentage:       {str(data_buffer['battery_percentage'])+' %':<{RIGHT_STR_MAX_LEN}s}")
         if ('usb_in'  in spc.device.peripherals):
-            print(f"USB voltage:              {str(data_buffer['usb_voltage'])+' mV':<10s}")
-            print(f"USB current:              {str(data_buffer['usb_current'])+' mA':<10s}")
+            print(f"USB voltage:              {str(data_buffer['usb_voltage'])+' mV':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"USB current:              {str(data_buffer['usb_current'])+' mA':<{RIGHT_STR_MAX_LEN}s}")
         if ('output'  in spc.device.peripherals):
-            print(f"Output voltage:           {str(data_buffer['output_voltage'])+' mV':<10s}")
-            print(f"Output current:           {str(data_buffer['output_current'])+' mA':<10s}")
+            print(f"Output voltage:           {str(data_buffer['output_voltage'])+' mV':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"Output current:           {str(data_buffer['output_current'])+' mA':<{RIGHT_STR_MAX_LEN}s}")
         if ('battery'  in spc.device.peripherals):
-            print(f"Charging:                 {'Charging' if data_buffer['is_charging'] else 'Not charging':<15s}")
-            print(f"Power source:             {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'USB':<15s}")
-            print(f"USB plugged in:           {'Plugged in' if data_buffer['is_usb_plugged_in'] else 'Unplugged':<15s}")
+            print(f"Charging:                 {'Charging' if data_buffer['is_charging'] else 'Not charging':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"Power source:             {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'USB':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"USB plugged in:           {'Plugged in' if data_buffer['is_usb_plugged_in'] else 'Unplugged':<{RIGHT_STR_MAX_LEN}s}")
         if ('fan'  in spc.device.peripherals):
-            print(f"Fan speed:                {str(data_buffer['fan_speed'])+' %':<10s}")
+            print(f"Fan speed:                {str(data_buffer['fan_speed'])+' %':<{RIGHT_STR_MAX_LEN}s}")
 
         time.sleep(1)
 

@@ -22,7 +22,7 @@ def monitor(spc):
 def print_all_data_once(spc):
     # Read the data before clearing the screen，to retain the last data when an error occurs.
     data_buffer = spc.read_all()
-
+    
     # print("\033c", end='')  # clear terminal windows
 
     print(f"Board name:               {data_buffer['board_name']:<20s}")
@@ -59,7 +59,7 @@ def main():
 
     parser.add_argument('-m', '--monitor', action='store_true', help='open a monitor')
     parser.add_argument('-a', '--all', action='store_true', help='print all the data of spc')
-    parser.add_argument('-f', '--fan', nargs='?', const=-1, type=int, help='get/set the speed of fan')
+    parser.add_argument('-f', '--fan', nargs='?', const=-1, type=int, metavar="speed percentage", help='get/set the speed of fan')
     parser.add_argument('-F', '--fan-mode', nargs='?', const=-1, type=str, choices=['auto', 'quiet', 'normal', 'performance'], help='get/set the mode of fan')
     parser.add_argument('-b', '--battery', action='store_true', help='battery voltage, current, percentage')
     parser.add_argument('-u', '--usb', action='store_true', help='usb voltage')
@@ -67,6 +67,7 @@ def main():
     parser.add_argument('-p', '--powered', action='store_true', help='power source')
     parser.add_argument('-c', '--charge', action='store_true', help='is charging')
     parser.add_argument('-j', '--json', action='store_true', help='output json format')
+    parser.add_argument("-st", "--shutdown-strategy", nargs='?', const=-1, type=int, choices=range(10, 100), metavar="battery percentage",help="get/set battery percentage for Shutdown Strategy")
 
     args = parser.parse_args()
 
@@ -135,3 +136,13 @@ output_current: {output_current:-5d} mA
             print('Charging')
         else:
             print('No charge')
+    elif args.shutdown_strategy is not None:
+        pct =  args.shutdown_strategy
+        if pct == -1:
+            pct = spc.read_shutdown_battery_pct()
+            print(f'shutdown strategy: {pct}')
+        else:
+            spc.set_shutdown_battery_pct(pct)
+            print(f'set shutdown strategy to {pct}')        
+
+    

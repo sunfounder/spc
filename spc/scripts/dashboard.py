@@ -12,9 +12,11 @@ from spc.utils import Logger
 from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 
 from urllib.parse import urlparse, parse_qs
+from os import system as run_command
 
 log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
+COMMAND_PATH = '/opt/spc/spc_service'
 
 spc = SPC()
 ha = HA_API()
@@ -122,7 +124,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_get(self, command, param):
         data = None
-        if command == 'get-all':
+        if command == "test":
+            data = "OK"
+        elif command == 'get-all':
             data = spc.read_all()
             data['cpu'] = get_cpu_info()
             data['memory'] = get_memory_info()
@@ -145,6 +149,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data = db.get_data_by_time_range('history', start, end)
             else:
                 data = "ERROR, start or end not found"
+        else:
+            return json.dumps({"data": "", "error": f"Command not found {command}"})
         return json.dumps({"data": data})
 
     def handle_post(self, command, payload):
@@ -165,6 +171,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                     config.set(section_name, key, value)
                     db_config[f"{section_name}.{key}"] = value
             db.set('config', db_config)
+        elif command == 'restart-service':
+            os.system(f"python3 {COMMAND_PATH} restart")
 
     def log_message(self, format, *args):
         msg = format % args

@@ -7,7 +7,7 @@ import argparse
 from spc.config import Config
 import time
 
-log = Logger('DASHBOARD')
+log = Logger('DATA_LOGGER')
 spc = SPC()
 db = DB()
 config = Config()
@@ -56,8 +56,8 @@ def main():
             if isinstance(value, bool):
                 data[key] = int(value)
 
-        print(data)
         db.set('history', data)
+        log("Set data: {data}")
         # db.set('test', {"aa":"true"})
 
         time.sleep(args.interval)
@@ -66,5 +66,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except Exception as e:
+        log(e)
     finally:
         db.close_connection()

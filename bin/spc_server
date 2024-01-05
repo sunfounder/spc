@@ -74,7 +74,7 @@ def start():
     runcommand("spc_mqtt_client", options=mqtt_options)
     runcommand("spc_auto start", options=auto_options)
     runcommand("spc_dashboard", options=dashboard_options)
-    runcommand("spc_rtc", options=None)
+    runcommand("spc_rtc")
     runcommand("influxd")
     runcommand("spc_data_logger", options=data_logger_options)
     if args.foreground:

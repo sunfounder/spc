@@ -11,6 +11,13 @@ import argparse
 
 DEPENDENCIES = [
     "unzip",
+    "python3-pip",
+    "python3-setuptools",
+    "python3-venv",
+    "libjpeg-dev", # for Pillow
+    "i2c-tools",
+    "wget",
+    "influxdb",
 ]
 
 SPC_DASHBOARD_DOWNLOAD_LINK = "https://github.com/sunfounder/spc-dashboard/releases/latest/download/spc-dashboard.zip"
@@ -22,6 +29,8 @@ parser.add_argument('--skip-reboot', action='store_true',
                     help='Do not reboot after install')
 parser.add_argument('--disable-autostart', action='store_true',
                     help='Do not start SPC automatically')
+parser.add_argument('--skip-config-txt', action='store_true',
+                    help='Do not set config.txt')
 # parser.add_argument('--mqtt-client', action=argparse.BooleanOptionalAction, default=False, help='Enable MQTT client or not')
 parser.add_argument('--mqtt-client', action='store_true', default=False, help='Enable MQTT client or not')
 
@@ -34,7 +43,11 @@ if os.geteuid() != 0:
 errors = []
 need_reboot = False
 
-user_name = os.getlogin()
+user_name = ''
+try:
+    user_name = os.getlogin() # can run at boot
+except:
+    user_name = os.popen("echo ${SUDO_USER:-$(who -m | awk '{ print $1 }')}").readline().strip()
 
 #
 # =================================================================
@@ -130,43 +143,46 @@ def install():
         do(msg="install dependencies",
             cmd='apt-get install -y ' + ' '.join(DEPENDENCIES))
     
+    do(msg=f"create working directory {working_dir}",
+        cmd=f'mkdir -p {working_dir}' +
+        f' && chmod -R 775 {working_dir}' +
+        f' && chown -R {user_name}:{user_name} {working_dir}')
+
     # ================
-    print("Config gpio")
-    set_config(msg="enable spi in config", name="dtparam=spi", value="on")
-    set_config(msg="enable i2c in config", name="dtparam=i2c_arm", value="on")
-    # dtoverlay=gpio-poweroff,gpio_pin=26,active_low=0
-    set_config(msg="config gpio-poweroff GPIO26",
-               name="dtoverlay=gpio-poweroff,gpio_pin",
-               value="26,active_low=0")
-    # dtoverlay=gpio-ir,gpio_pin=13
-    set_config(msg="config gpio-ir GPIO13 ",
-               name="dtoverlay=gpio-ir,gpio_pin",
-               value="13")
-    # ================
-    set_config(msg="set core_freq to 500",
-        name="core_freq",
-        value="500"
-    )
-    set_config(msg="set core_freq_min to 500",
-        name="core_freq_min",
-        value="500"
-    )  
+    if not args.skip_config_txt:
+        print("Config gpio")
+        set_config(msg="enable spi in config", name="dtparam=spi", value="on")
+        set_config(msg="enable i2c in config", name="dtparam=i2c_arm", value="on")
+        # dtoverlay=gpio-poweroff,gpio_pin=26,active_low=0
+        set_config(msg="config gpio-poweroff GPIO26",
+                name="dtoverlay=gpio-poweroff,gpio_pin",
+                value="26,active_low=0")
+        # dtoverlay=gpio-ir,gpio_pin=13
+        set_config(msg="config gpio-ir GPIO13 ",
+                name="dtoverlay=gpio-ir,gpio_pin",
+                value="13")
+        # ================
+        set_config(msg="set core_freq to 500",
+            name="core_freq",
+            value="500"
+        )
+        set_config(msg="set core_freq_min to 500",
+            name="core_freq_min",
+            value="500"
+        )  
     # ================
     print('Install spc library')
     do(msg="create virtual environment",
         cmd=f'python3 -m venv {working_dir}/venv')
+    source_venv = f'source {working_dir}/venv/bin/activate'
     do(msg="update pip install build",
-        cmd=f'source {working_dir}/venv/bin/activate && pip3 install --upgrade pip build')
-    do(msg="build spc", cmd=f'source {working_dir}/venv/bin/activate && python3 -m build')
-    do(msg="install spc", cmd=f'source {working_dir}/venv/bin/activate && pip3 install --force-reinstall ./dist/spc-{__version__}-py3-none-any.whl')
+        cmd=f'{source_venv} && pip3 install --upgrade pip build')
+    do(msg="build spc", cmd=f'{source_venv} && python3 -m build')
+    do(msg="install spc", cmd=f'{source_venv} && pip3 install --force-reinstall ./dist/spc-{__version__}-py3-none-any.whl')
     do(msg="clean spc", cmd='rm -rf ./dist ./build ./spc.egg-info')
 
     # ================
     print('Install spc auto control program')
-    do(msg=f"check dir {working_dir}",
-        cmd=f'mkdir -p {working_dir}' +
-        f' && chmod -R 775 {working_dir}' +
-        f' && chown -R {user_name}:{user_name} {working_dir}')
     do(msg=f"copy {spc_server_file} file",
         cmd=f'cp ./bin/{spc_server_file} {working_dir}/{spc_server_file}')
     do(msg=f'copy {service_config_file} file',
@@ -200,7 +216,7 @@ def install():
     do(msg=f"unzip spc dashboard",
         cmd=f'unzip /tmp/spc-dashboard.zip -d /tmp/spc-dashboard')
     do(msg=f"copy spc dashboard",
-        cmd=f'cp -r /tmp/spc-dashboard/* {working_dir}/www')
+        cmd=f'cp -r /tmp/spc-dashboard/spc-dashboard {working_dir}/www')
     do(msg=f"remove tmp files",
         cmd=f'rm -rf /tmp/spc-dashboard*')
 

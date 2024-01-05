@@ -25,7 +25,7 @@ def print_all_data_once(spc):
     
     # print("\033c", end='')  # clear terminal windows
 
-    print(f"Board name:               {data_buffer['board_id']:<20s}")
+    print(f"Board name:               {data_buffer['board_name']:<20s}")
 
     if ('battery'  in spc.device.peripherals):
         print(f"Battery voltage:          {str(data_buffer['battery_voltage'])+' mV':<10s}")

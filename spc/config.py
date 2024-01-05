@@ -34,6 +34,9 @@ class Config:
             "ssl_ca_cert": "",
             "ssl_cert": ""
         },
+        "data-logger": {
+            "interval": 1,
+        }
     }
 
     def __init__(self, config_file=default_config_file):
@@ -99,3 +102,6 @@ class Config:
         self.config[section][key] = str(value)
         with open(self.config_file, 'w') as f:
             self.config.write(f)
+
+    def get_all(self):
+        return {s:dict(self.config.items(s)) for s in self.config.sections()}

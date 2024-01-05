@@ -34,7 +34,7 @@ class SPC():
         'battery_voltage': (11, 2, '>H'),
         'battery_current': (13, 2, '>h'),
         'battery_percentage': (15, 1, 'B'),
-        'battery_capactiy': (16, 2, '>H'),
+        'battery_capacity': (16, 2, '>H'),
         #
         'power_source': (18, 1, 'B'),
         'is_usb_plugged_in': (19, 1, 'B'),
@@ -50,6 +50,7 @@ class SPC():
 
     basic_data = [
         'board_id',
+        'board_name',
         'shutdown_request',
         'cpu_temperature',
     ]
@@ -57,7 +58,7 @@ class SPC():
         'battery': [
             'battery_voltage',
             'battery_current',
-            'battery_capactiy',
+            'battery_capacity',
             'battery_percentage',
             'is_charging',
             'shutdown_battery_pct',
@@ -223,7 +224,7 @@ class SPC():
         data = {}
         for i, name in enumerate(self.data_map):
             data[name] = result[i]
-        data['board_id'] = self.device.name
+        data['board_name'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
         data['is_usb_plugged_in'] = data['is_usb_plugged_in'] == 1
         # data['power_source'] = 'Battery' if data['power_source'] == 1 else 'USB'

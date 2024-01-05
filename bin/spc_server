@@ -2,11 +2,13 @@
 
 import argparse
 import os
+import time
 
 WORKING_DIR = "/opt/spc"
 
 parser = argparse.ArgumentParser(description="SPC Service")
 parser.add_argument("command", choices=["start", "stop", "restart"], help="Command")
+parser.add_argument("--foreground", action=argparse.BooleanOptionalAction, help="Run server on forground")
 parser.add_argument("--mqtt-host", help="MQTT hostname")
 parser.add_argument("--mqtt-port", help="MQTT port number")
 parser.add_argument("--mqtt-username", help="MQTT username")
@@ -24,38 +26,23 @@ parser.add_argument("-c", "--rgb-color", help="RGB color")
 parser.add_argument("-p", "--rgb-speed", help="RGB speed")
 parser.add_argument("-f", "--rgb-pwm-frequency", type=int, help="RGB PWM frequency")
 parser.add_argument("-i", "--rgb-pin", choices=["spi", "10", "pwm", "12", "pcm", "21"], help="RGB pin")
+parser.add_argument("--data-logger-interval", help="Data logger interval")
 
 args = parser.parse_args()
 
-def runcommand(command, options={}, venv=True, background=False):
+def runcommand(command, options={}, venv=True):
     for key in options:
         if options[key] is not None:
             command += f" {key} {options[key]}"
-    if background:
-        command += " &"
-    # command = f"bash -c '{command}'"
+    command += " &"
     if venv:
         command = f"source {WORKING_DIR}/venv/bin/activate && {command}"
     command = f"bash -c '{command}'"
     print(f"Run command: {command}")
     os.system(command)
 
-    # import subprocess
-    # p = subprocess.Popen(command,
-    #                      shell=True,
-    #                      executable="/bin/bash",
-    #                      stdout=subprocess.PIPE,
-    #                      stderr=subprocess.PIPE,
-    #                      universal_newlines=True)
-    # p.wait()
-    # result = p.stdout.read()
-    # error = p.stderr.read()
-    # status = p.poll()
-    # return status, result, error
-
 def start():
     os.chdir(WORKING_DIR)
-    # runcommand(f"source {WORKING_DIR}/venv/bin/activate")
     mqtt_options = {
         "-H": args.mqtt_host,
         "-p": args.mqtt_port,
@@ -81,21 +68,37 @@ def start():
             "--ssl-ca-cert": args.ssl_ca_cert,
             "--ssl-cert": args.ssl_cert
         }
-    runcommand("spc_mqtt_client", options=mqtt_options, background=True)
-    runcommand("spc_auto start", options=auto_options, background=True)
-    runcommand("spc_dashboard", options=dashboard_options, background=True)
-    runcommand("spc_rtc", options=None, background=True)
+    data_logger_options = {
+        "--interval": args.data_logger_interval
+    }
+    runcommand("spc_mqtt_client", options=mqtt_options)
+    runcommand("spc_auto start", options=auto_options)
+    runcommand("spc_dashboard", options=dashboard_options)
+    runcommand("spc_rtc", options=None)
+    runcommand("influxd")
+    runcommand("spc_data_logger", options=data_logger_options)
+    if args.foreground:
+        try:
+            while True:
+                time.sleep(10)
+        finally:
+            print("Terminated")
+            stop()
+
+    
 
 def stop_process(name):
     pid = os.popen(f'ps -ef | grep "{name}" | awk "{{print $2}}"').read()
     pid = " ".join(pid.split("\n")[:-2])
     command = f"kill {pid}"
-    runcommand(command)
+    runcommand(command, venv=False)
 
 def stop():
     stop_process("spc_mqtt_client")
     stop_process("spc_auto")
     stop_process("spc_dashboard")
+    stop_process("influxd")
+    stop_process("spc_data_logger")
 
 if args.command == "start":
     start()

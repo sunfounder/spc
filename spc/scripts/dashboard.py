@@ -2,18 +2,23 @@
 
 import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import os
-from typing import Any
 from spc.spc import SPC
+from spc.ha_api import HA_API
+from spc.database import DB
 import json
 
 from spc.config import Config
-from spc.utils import Logger, get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
+from spc.utils import Logger
+from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
+
+from urllib.parse import urlparse, parse_qs
 
 log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
 
 spc = SPC()
+ha = HA_API()
+db = DB()
 config = Config()
 
 PORT = config.getint('dashboard', 'port', default=34001)
@@ -39,26 +44,25 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_response_only(code, message)
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
+        self.send_header('Access-Control-Allow-Origin', '*')
 
     def do_GET(self):
-        global last_get_all
-        if last_get_all:
-            self.send_response(200, is_log=False)
-        else:
-            last_get_all = True
-            self.send_response(200, is_log=True)
 
-        self.send_header('Access-Control-Allow-Origin', '*')
         response = None
+        parsed_path = urlparse(self.path)
+        query_params = parse_qs(parsed_path.query)
+        
         if self.path.startswith(self.api_prefix):
             # 处理API请求
+            self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            command = self.path[len(self.api_prefix):]
-            response = self.handle_get(command)
+            command = parsed_path.path[len(self.api_prefix):]
+            response = self.handle_get(command, query_params)
             self.wfile.write(response.encode())
         elif self.path in self.routes:
             # 处理其他请求
+            self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             with open(f"{STATIC_URL}index.html", 'r') as f:
@@ -116,8 +120,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
 
-    def handle_get(self, command):
-        data = {}
+    def handle_get(self, command, param):
+        data = None
         if command == 'get-all':
             data = spc.read_all()
             data['cpu'] = get_cpu_info()
@@ -125,6 +129,22 @@ class RequestHandler(BaseHTTPRequestHandler):
             data['disk'] = get_disks_info()
             data['network'] = get_network_info()
             data['boot_time'] = get_boot_time()
+            if ha.is_homeassistant_addon():
+                data['network']["type"] = ha.get_network_connection_type()
+        elif command == 'get-config':
+            data = config.get_all()
+        elif command == 'get-history':
+            n = 1
+            if 'n' in param:
+                n = int(param['n'][0])
+            data = db.get_latest_data('history', n=n)
+        elif command == "get-time-range":
+            if 'start' in param and 'end' in param:
+                start = int(param['start'][0])
+                end = int(param['end'][0])
+                data = db.get_data_by_time_range('history', start, end)
+            else:
+                data = "ERROR, start or end not found"
         return json.dumps({"data": data})
 
     def handle_post(self, command, payload):
@@ -132,8 +152,19 @@ class RequestHandler(BaseHTTPRequestHandler):
         data = json.loads(payload)['data']
         if command == 'set-fan-mode':
             spc.set_fan_mode(data)
+            db.set('history', {'fan_mode': data})
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
+            db.set('history', {'fan_state': data})
+        elif command == 'set-config':
+            db_config = {}
+            for section_name in data:
+                section = data[section_name]
+                for key in section:
+                    value = section[key]
+                    config.set(section_name, key, value)
+                    db_config[f"{section_name}.{key}"] = value
+            db.set('config', db_config)
 
     def log_message(self, format, *args):
         msg = format % args

@@ -459,7 +459,9 @@ def main():
     log(f'SPC auto started', level='INFO')
     retry_flag = False
 
-    if "ws2812" in spc.device.peripherals:
+    if "ws2812" in spc.device.peripherals\
+        and args.rgb_switch == True\
+        and rgb is not None:
         rgb_thread = threading.Thread(target=rgb_thread_loop)
         rgb_thread.daemon = True
         rgb_thread.start()
@@ -468,14 +470,10 @@ def main():
         try:
             data = spc.read_all()
             shutdown_singal_control(data)
-            if "usb_in" in spc.device.peripherals:
-                usb_unplugged_handler(data)
-            if "fan" in spc.device.peripherals:
-                fan_auto_control(data)
-            if "oled" in spc.device.peripherals:
-                draw_oled(data)
-            if "ws2812" in spc.device.peripherals:
-                rgb_control(data)
+            usb_unplugged_handler(data)
+            fan_auto_control(data)
+            draw_oled(data)
+            rgb_control(data)
             time.sleep(float(args.reflash_interval))
             retry_flag = False
         except Exception as e:

@@ -8,7 +8,7 @@ from spc.spc import SPC
 from spc.config import Config
 from spc.oled import OLED, Rect
 
-from spc.utils import Logger, run_command
+from spc.logger import Logger
 import threading
 from spc.system_status import get_cpu_usage, get_ram_info, get_disk_space, get_ip_address
 from spc.ha_api import HA_API

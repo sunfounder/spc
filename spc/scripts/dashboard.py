@@ -8,7 +8,7 @@ from spc.database import DB
 import json
 
 from spc.config import Config
-from spc.utils import Logger
+from spc.logger import Logger
 from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 
 from urllib.parse import urlparse, parse_qs

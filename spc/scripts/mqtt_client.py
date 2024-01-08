@@ -4,7 +4,7 @@ import paho.mqtt.client as mqtt
 import time
 import json
 import socket
-from spc.utils import Logger
+from spc.logger import Logger
 from spc.spc import SPC
 from argparse import ArgumentParser
 from spc.config import Config

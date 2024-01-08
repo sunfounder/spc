@@ -1,7 +1,7 @@
 import os
 import subprocess
 import shutil
-from .utils import Logger
+from .logger import Logger
 from .ha_api import HA_API
 import time
 

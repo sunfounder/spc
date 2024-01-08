@@ -1,5 +1,6 @@
 from spc.spc import SPC
-from spc.utils import Logger, run_command
+from spc.utils import run_command
+from spc.logger import Logger
 from datetime import datetime
 
 log = Logger("RTC")

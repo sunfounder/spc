@@ -1,6 +1,7 @@
 import configparser
 import os
-from .utils import run_command, Logger
+from .utils import run_command
+from .logger import Logger
 
 log = Logger(script_name="config")
 

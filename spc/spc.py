@@ -2,7 +2,7 @@
 from .i2c import I2C
 import struct
 from .config import Config
-from .utils import Logger
+from .logger import Logger
 from .system_status import get_cpu_temperature
 from .devices import Devices
 import sys

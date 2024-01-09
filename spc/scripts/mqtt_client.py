@@ -171,24 +171,24 @@ def main():
         },
         {
             "component": "sensor",
-            "name": "USB Voltage",
+            "name": "External Input Voltage",
             "device_class": "voltage",
             "unit_of_measurement": "V",
-            "get_state": lambda data: data["usb_voltage"] / 1000,
+            "get_state": lambda data: data["external_input_voltage"] / 1000,
         },
         {
             "component": "sensor",
-            "name": "Output Voltage",
+            "name": "Raspberry Pi Voltage",
             "device_class": "voltage",
             "unit_of_measurement": "V",
-            "get_state": lambda data: data["output_voltage"] / 1000,
+            "get_state": lambda data: data["raspberry_pi_voltage"] / 1000,
         },
         {
             "component": "sensor",
-            "name": "Output Current",
+            "name": "Raspberry Pi Current",
             "device_class": "current",
             "unit_of_measurement": "A",
-            "get_state": lambda data: data["output_current"] / 1000,
+            "get_state": lambda data: data["raspberry_pi_current"] / 1000,
         },
         {
             "component": "binary_sensor",
@@ -210,9 +210,9 @@ def main():
         },
         {
             "component": "binary_sensor",
-            "name": "USB Plugged",
+            "name": "External Plugged in",
             "device_class": "plug",
-            "get_state": lambda data: "ON" if data["is_usb_plugged_in"] > 3 else "OFF",
+            "get_state": lambda data: "ON" if data["is_plugged_in"] > 3 else "OFF",
         },
         {
             "component": "fan",

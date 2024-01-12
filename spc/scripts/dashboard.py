@@ -32,6 +32,17 @@ parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), h
 
 args = parser.parse_args()
 
+def test_mqtt(config):
+    import paho.mqtt.client as mqtt
+    from socket import gaierror
+    client = mqtt.Client()
+    client.username_pw_set(config['username'], config['password'])
+    try:
+        client.connect(config['host'], config['port'])
+        return True, None
+    except gaierror:
+        return False, "Connection Failed"
+
 
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
@@ -116,8 +127,36 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_get(self, command, param):
         data = None
+        status = True
+        error = None
         if command == "test":
             data = "OK"
+            status = True
+        elif command == 'test-mqtt':
+            config = {}
+            if 'host' not in param:
+                status = False
+                error = "ERROR, host not found"
+            elif 'port' not in param:
+                status = False
+                error = "ERROR, port not found"
+            elif 'username' not in param:
+                status = False
+                error = "ERROR, username not found"
+            elif 'password' not in param:
+                status = False
+                error = "ERROR, password not found"
+            else:
+                config['host'] = param['host'][0]
+                config['port'] = int(param['port'][0])
+                config['username'] = param['username'][0]
+                config['password'] = param['password'][0]
+                result = test_mqtt(config)
+                data = {
+                    "status": result[0],
+                    "error": result[1]
+                }
+                status = True
         elif command == 'get-all':
             data = spc.read_all()
             data['cpu'] = get_cpu_info()
@@ -127,23 +166,34 @@ class RequestHandler(BaseHTTPRequestHandler):
             data['boot_time'] = get_boot_time()
             if ha.is_homeassistant_addon():
                 data['network']["type"] = ha.get_network_connection_type()
+            status = True
         elif command == 'get-config':
+            status = True
             data = config.get_all()
         elif command == 'get-history':
             n = 1
             if 'n' in param:
                 n = int(param['n'][0])
+            status = True
             data = db.get('history', n=n)
         elif command == "get-time-range":
             if 'start' in param and 'end' in param:
                 start = int(param['start'][0])
                 end = int(param['end'][0])
+                status = True
                 data = db.get_data_by_time_range('history', start, end)
             else:
-                data = "ERROR, start or end not found"
+                status = False
+                error = "ERROR, start or end not found"
         else:
-            return json.dumps({"data": "", "error": f"Command not found {command}"})
-        return json.dumps({"data": data})
+            status = False
+            error = f"Command not found {command}"
+        result = {"status": status}
+        if status:
+            result['data'] = data
+        else:
+            result['error'] = error
+        return json.dumps(result)
 
     def handle_post(self, command, payload):
         payload = payload.decode()

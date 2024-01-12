@@ -1,5 +1,7 @@
 from .version import __version__
 
+RIGHT_STR_MAX_LEN = 20
+
 def monitor(spc):
     import time
     print("\033c", end='')  # clear terminal windows

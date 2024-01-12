@@ -1,6 +1,8 @@
 from influxdb import InfluxDBClient
+from influxdb.exceptions import InfluxDBClientError
+import json
 
-class DB:
+class Database:
     def __init__(self):
         self.client = InfluxDBClient(host='localhost', port=8086)
         self.database = 'spc'
@@ -19,16 +21,24 @@ class DB:
                 "fields": data
             }
         ]
-        self.client.write_points(json_body)
+        try:
+            self.client.write_points(json_body)
+            return True, json_body
+        except InfluxDBClientError as e:
+            return False, json.loads(e.content)["error"]
 
     def get_data_by_time_range(self, measurement, start_time, end_time, key="*"):
         query = f"SELECT {key} FROM {measurement} WHERE time >= '{start_time}' AND time <= '{end_time}'"
         result = self.client.query(query)
         return list(result.get_points())
 
-    def get_latest_data(self, measurement, key="*", n=1):
+    def get(self, measurement, key="*", n=1):
         query = f"SELECT {key} FROM {measurement} ORDER BY time DESC LIMIT {n}"
         result = self.client.query(query)
+        if n == 1:
+            if len(list(result.get_points())) == 0:
+                return None
+            return list(result.get_points())[0]
         return list(result.get_points())
 
     def close_connection(self):

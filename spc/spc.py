@@ -6,6 +6,7 @@ from .logger import Logger
 from .system_status import get_cpu_temperature
 from .devices import Devices
 import sys
+import time
 
 # init log
 # =================================================================
@@ -110,7 +111,7 @@ class SPC():
                 result = self.i2c.read_block_data(start, length)
                 break
             except TimeoutError:
-                time.sleep(.01)
+                time.sleep(0.01)
                 continue
             # other exceptions will be raised
         else:
@@ -193,6 +194,10 @@ class SPC():
         self.fan_mode = self.config.get('auto', 'fan_mode')
         return self.fan_mode
 
+    def read_fan_state(self) -> str:
+        self.fan_state = self.config.get('auto', 'fan_state') == 'True'
+        return self.fan_state
+
     def read_board_id(self) -> int:
         result = self._read_data('board_id')
         return int(result)
@@ -228,8 +233,8 @@ class SPC():
         data['is_charging'] = data['is_charging'] == 1
         data['is_plugged_in'] = data['is_plugged_in'] == 1
         data['cpu_temperature'] = get_cpu_temperature()
-        data['fan_mode'] = self.fan_mode
-        data['fan_state'] = self.fan_state
+        data['fan_mode'] = self.read_fan_mode()
+        data['fan_state'] = self.read_fan_state()
         data['shutdown_battery_pct'] = self.shutdown_battery_pct
         return data
 

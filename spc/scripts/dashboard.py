@@ -4,7 +4,7 @@ import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from spc.spc import SPC
 from spc.ha_api import HA_API
-from spc.database import DB
+from spc.database import Database
 import json
 
 from spc.config import Config
@@ -20,7 +20,7 @@ COMMAND_PATH = '/opt/spc/spc_service'
 
 spc = SPC()
 ha = HA_API()
-db = DB()
+db = Database()
 config = Config()
 
 PORT = config.getint('dashboard', 'port', default=34001)
@@ -38,10 +38,12 @@ class RequestHandler(BaseHTTPRequestHandler):
     routes = ["/", "/dashboard", "/minimal"]
 
     def send_response(self, code, message=None):
+        self.log_request(code)
         self.send_response_only(code, message)
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
         self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Headers', '*')
 
     def do_GET(self):
         response = None
@@ -94,23 +96,22 @@ class RequestHandler(BaseHTTPRequestHandler):
         
         if self.path.startswith(self.api_prefix):
             command = self.path[len(self.api_prefix):]
-            self.handle_post(command, data)
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
+            result = self.handle_post(command, data)
+            if result["status"]:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+            else:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
         
-            response_data = {
-                'message': 'POST request received',
-                'data': data.decode()  # 将 POST 请求的内容转为字符串
-            }
-            response_json = json.dumps(response_data)
-            
+            response_json = json.dumps(result)
+            log(response_json, level='DEBUG')
             self.wfile.write(response_json.encode())
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
 
     def handle_get(self, command, param):
@@ -132,7 +133,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             n = 1
             if 'n' in param:
                 n = int(param['n'][0])
-            data = db.get_latest_data('history', n=n)
+            data = db.get('history', n=n)
         elif command == "get-time-range":
             if 'start' in param and 'end' in param:
                 start = int(param['start'][0])
@@ -146,24 +147,33 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_post(self, command, payload):
         payload = payload.decode()
-        data = json.loads(payload)['data']
+        payload = json.loads(payload)
+        if ("data" not in payload):
+            return {"status": False, "error": f'Key [data] not found'}
+        data = payload['data']
         if command == 'set-fan-mode':
             spc.set_fan_mode(data)
-            db.set('history', {'fan_mode': data})
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
-            db.set('history', {'fan_state': data})
         elif command == 'set-config':
             db_config = {}
+            print(data)
             for section_name in data:
                 section = data[section_name]
                 for key in section:
                     value = section[key]
                     config.set(section_name, key, value)
-                    db_config[f"{section_name}.{key}"] = value
-            db.set('config', db_config)
+                    db_config[f"{section_name}_{key}"] = value
+                    print(f"Set {section_name}.{key} = {value}")
+            
+            status, result =db.set('config', db_config)
+            if not status:
+                return {"status": False, "error": result}
         elif command == 'restart-service':
             run_command(f"python3 {COMMAND_PATH} restart")
+        else:
+            return {"status": False, "error": f"Command not found [{command}]"}
+        return {"status": True, "data": data}
 
     def log_message(self, format, *args):
         msg = format % args

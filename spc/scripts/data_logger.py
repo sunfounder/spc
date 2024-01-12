@@ -1,6 +1,6 @@
 
 from spc.spc import SPC
-from spc.database import DB
+from spc.database import Database
 from spc.logger import Logger
 from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 import argparse
@@ -9,7 +9,7 @@ import time
 
 log = Logger('DATA_LOGGER')
 spc = SPC()
-db = DB()
+db = Database()
 config = Config()
 
 INTERVAL = config.getint('data-logger', 'interval', default=1)

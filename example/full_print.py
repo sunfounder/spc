@@ -24,7 +24,7 @@ def main():
         if ('battery'  in spc.device.peripherals):
             print(f"Battery voltage:          {str(data_buffer['battery_voltage'])+' mV':<{RIGHT_STR_MAX_LEN}s}")
             print(f"Battery current:          {str(data_buffer['battery_current'])+' mA':<{RIGHT_STR_MAX_LEN}s}")
-            print(f"Battery capactiy:         {str(data_buffer['battery_capactiy'])+' mAh':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"Battery capacity:         {str(data_buffer['battery_capacity'])+' mAh':<{RIGHT_STR_MAX_LEN}s}")
             print(f"Battery percentage:       {str(data_buffer['battery_percentage'])+' %':<{RIGHT_STR_MAX_LEN}s}")
             print(f"Charging:                 {'Charging' if data_buffer['is_charging'] else 'Not charging':<{RIGHT_STR_MAX_LEN}s}")
         if ('external_input'  in spc.device.peripherals):

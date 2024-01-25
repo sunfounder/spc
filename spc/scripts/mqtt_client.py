@@ -49,13 +49,15 @@ class MQTT_Client:
         timestart = time.time()
         while time.time() - timestart < self.TIMEOUT:
             if self.connected == True:
-                break
+                log(f"Connected to broker", level="INFO")
+                self.init()
+                return True
             elif self.connected == False:
                 log(f"Connection Failed. Check username and password", level="WARNING")
                 return False
             time.sleep(1)
-        self.init()
-        return True
+        log(f"Connection Failed. Timeout", level="WARNING")
+        return False
 
     # upload configs:
     def init(self):

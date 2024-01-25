@@ -287,8 +287,7 @@ class SPC_MQTT_Client:
             self.mqtt_client.create_entity(**entity)
 
         status = self.mqtt_client.start()
-        if status:
-            return False
+        return status
 
     def check_config_update(self):
         host = self.db.get("config", "mqtt_host")["mqtt_host"]

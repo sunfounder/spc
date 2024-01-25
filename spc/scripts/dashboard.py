@@ -13,6 +13,7 @@ from spc.system_status import get_memory_info, get_disks_info, get_network_info,
 
 from urllib.parse import urlparse, parse_qs
 from os import system as run_command
+from spc.utils import log_error
 
 log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
@@ -32,21 +33,53 @@ parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), h
 
 args = parser.parse_args()
 
-def test_mqtt(config):
+mqtt_connected = None
+
+def on_mqtt_connected(client, userdata, flags, rc):
+    global mqtt_connected
+    if rc==0:
+        print("Connected to broker")
+        mqtt_connected = True
+    else:
+        print("Connection failed")
+        mqtt_connected = False
+
+def test_mqtt(config, timeout=5):
+    global mqtt_connected
     import paho.mqtt.client as mqtt
     from socket import gaierror
+    import time
+    mqtt_connected = None
     client = mqtt.Client()
+    client.on_connect = on_mqtt_connected
     client.username_pw_set(config['username'], config['password'])
     try:
         client.connect(config['host'], config['port'])
-        return True, None
     except gaierror:
-        return False, "Connection Failed"
+        return False, "Connection failed, Check hostname and port"
+    timestart = time.time()
+    while time.time() - timestart < timeout:
+        client.loop()
+        if mqtt_connected == True:
+            return True, None
+        elif mqtt_connected == False:
+            return False, "Connection failed, Check username and password"
+    return False, "Timeout"
 
+def log_error(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            log(f"Error in {func.__name__}: {e}")
+            raise
+    return wrapper
+    
 
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
     routes = ["/", "/dashboard", "/minimal"]
+
 
     def send_response(self, code, message=None):
         self.log_request(code)
@@ -56,6 +89,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Headers', '*')
 
+    @log_error
     def do_GET(self):
         response = None
         parsed_path = urlparse(self.path)
@@ -99,7 +133,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(b'File not found: %s' % filename.encode())
-    
+
+    @log_error
     def do_POST(self):
 
         content_length = int(self.headers['Content-Length'])
@@ -133,7 +168,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             data = "OK"
             status = True
         elif command == 'test-mqtt':
-            config = {}
+            mqtt_config = {}
             if 'host' not in param:
                 status = False
                 error = "ERROR, host not found"
@@ -147,11 +182,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                 status = False
                 error = "ERROR, password not found"
             else:
-                config['host'] = param['host'][0]
-                config['port'] = int(param['port'][0])
-                config['username'] = param['username'][0]
-                config['password'] = param['password'][0]
-                result = test_mqtt(config)
+                mqtt_config['host'] = param['host'][0]
+                mqtt_config['port'] = int(param['port'][0])
+                mqtt_config['username'] = param['username'][0]
+                mqtt_config['password'] = param['password'][0]
+                result = test_mqtt(mqtt_config)
                 data = {
                     "status": result[0],
                     "error": result[1]
@@ -170,6 +205,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif command == 'get-config':
             status = True
             data = config.get_all()
+            log(f"config: {data}", level='DEBUG')
         elif command == 'get-history':
             n = 1
             if 'n' in param:
@@ -216,7 +252,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     db_config[f"{section_name}_{key}"] = value
                     print(f"Set {section_name}.{key} = {value}")
             
-            status, result =db.set('config', db_config)
+            status, result = db.set('config', db_config)
             if not status:
                 return {"status": False, "error": result}
         elif command == 'restart-service':

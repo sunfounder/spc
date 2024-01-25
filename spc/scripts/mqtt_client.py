@@ -15,6 +15,8 @@ import time
 log = Logger("MQTT_Client")
 
 class MQTT_Client:
+    TIMEOUT = 5
+
     def __init__(self, node_name, discovery_perfix="homeassistant"):
         self.node_name = node_name
         self.node_id = node_name.lower().replace(' ', '_').replace('-', '_')
@@ -25,7 +27,7 @@ class MQTT_Client:
         self.entities = {}
         self.setters = {}
         self.preset_mode = "normal"
-        self._ready = False
+        self.connected = None
 
     def config(self, host, port, username=None, password=None):
         self.host = host
@@ -33,18 +35,25 @@ class MQTT_Client:
         self.username = username
         self.password = password
 
-    def isready(self):
-        return self._ready
-
     def start(self):
+        self.connected = None
         if (self.username != None and self.password != None):
             self.client.username_pw_set(self.username, self.password)
         try:
             self.client.connect(self.host, self.port)
         except socket.gaierror:
             log(f"Connection Failed. Name or service not known: {self.host}:{self.port}", level="WARNING")
-            return
+            return False
+        
         self.client.loop_start()
+        timestart = time.time()
+        while time.time() - timestart < self.TIMEOUT:
+            if self.connected == True:
+                break
+            elif self.connected == False:
+                log(f"Connection Failed. Check username and password", level="WARNING")
+                return False
+            time.sleep(1)
         self.init()
 
     # upload configs:
@@ -68,6 +77,10 @@ class MQTT_Client:
     def on_connect(self, client, userdata, flags, rc):
         if rc != 0:
             print(f"Connection Failed.")
+            self.connected = False
+        else:
+            print(f"Connected to broker")
+            self.connected = True
     
     def on_message(self, client, userdata, msg):
         if msg.topic in self.setters:
@@ -233,6 +246,7 @@ class SPC_MQTT_Client:
         self.spc = SPC()
         self.mqtt_client = MQTT_Client(node_name="SPC")
         self.db = Database()
+        self.connected = None
 
         self.host = self.config.get("mqtt", "host")
         self.port = self.config.getint("mqtt", "port")
@@ -269,8 +283,8 @@ class SPC_MQTT_Client:
         for entity in self.ENTITIES:
             self.mqtt_client.create_entity(**entity)
 
-        self.mqtt_client.start()
-        if not self.mqtt_client.isready():
+        status = self.mqtt_client.start()
+        if status:
             return False
 
     def check_config_update(self):

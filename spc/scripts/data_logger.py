@@ -19,8 +19,7 @@ parser.add_argument("--interval", default=INTERVAL, help="Set interval for data 
 
 args = parser.parse_args()
 
-def main():
-    while True:
+def loop():
         data = spc.read_all()
         cpu = get_cpu_info()
         memory = get_memory_info()
@@ -61,12 +60,14 @@ def main():
         # db.set('test', {"aa":"true"})
 
         time.sleep(args.interval)
-    
+
+def main():
+    while True:
+        try:
+            loop()
+        except Exception as e:
+            log(e)
+            time.sleep(5)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        log(e)
-    finally:
-        db.close_connection()
+    main()

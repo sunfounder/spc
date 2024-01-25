@@ -55,6 +55,7 @@ class MQTT_Client:
                 return False
             time.sleep(1)
         self.init()
+        return True
 
     # upload configs:
     def init(self):

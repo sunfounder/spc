@@ -13,7 +13,6 @@ from spc.system_status import get_memory_info, get_disks_info, get_network_info,
 
 from urllib.parse import urlparse, parse_qs
 from os import system as run_command
-from spc.utils import log_error
 
 log = Logger('DASHBOARD')
 STATIC_URL = '/opt/spc/www/'
@@ -74,7 +73,6 @@ def log_error(func):
             log(f"Error in {func.__name__}: {e}")
             raise
     return wrapper
-    
 
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'

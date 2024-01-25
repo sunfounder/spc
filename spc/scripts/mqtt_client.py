@@ -290,10 +290,10 @@ class SPC_MQTT_Client:
         return status
 
     def check_config_update(self):
-        host = self.db.get("config", "mqtt_host")["mqtt_host"]
-        port = self.db.get("config", "mqtt_port")["mqtt_port"]
-        username = self.db.get("config", "mqtt_username")["mqtt_username"]
-        password = self.db.get("config", "mqtt_password")["mqtt_password"]
+        host = self.db.get("config", "mqtt_host")
+        port = self.db.get("config", "mqtt_port")
+        username = self.db.get("config", "mqtt_username")
+        password = self.db.get("config", "mqtt_password")
         changed = False
         if host != None and host != "" and host != self.host:
             self.host = host

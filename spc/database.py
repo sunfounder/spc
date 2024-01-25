@@ -38,7 +38,7 @@ class Database:
         if n == 1:
             if len(list(result.get_points())) == 0:
                 return None
-            return list(result.get_points())[0]
+            return list(result.get_points())[0][key]
         return list(result.get_points())
 
     def close_connection(self):

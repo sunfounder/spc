@@ -247,7 +247,8 @@ class SPC_MQTT_Client:
     def __init__(self):
         self.config = Config()
         self.spc = SPC()
-        self.mqtt_client = MQTT_Client(node_name="SPC")
+        name = self.spc.device.name
+        self.mqtt_client = MQTT_Client(node_name=name)
         self.db = Database()
         self.connected = None
 
@@ -320,21 +321,28 @@ class SPC_MQTT_Client:
     def run(self):
         result = self.spc.read_all()
         for entity in self.mqtt_client.entities.values():
-            changed = False
+            # changed = False
+            data = {}
             if "get_state" in entity:
                 if self.result == None or entity["get_state"](self.result) != entity["get_state"](result):
-                    self.publish(entity["config"]["state_topic"], entity["get_state"](result))
-                    changed = True
+                    # self.publish(entity["config"]["state_topic"], entity["get_state"](result))
+                    # changed = True
+                    data["state"] = entity["get_state"](result)
             if "get_preset_mode" in entity:
                 if self.result == None or entity["get_preset_mode"](self.result) != entity["get_preset_mode"](result):
-                    self.publish(entity["config"]["preset_mode_state_topic"], entity["get_preset_mode"](result))
-                    changed = True
+                    # self.publish(entity["config"]["preset_mode_state_topic"], entity["get_preset_mode"](result))
+                    # changed = True
+                    data["state"] = entity["get_preset_mode"](result)
             if "get_percent" in entity:
                 if self.result == None or entity["get_percent"](self.result) != entity["get_percent"](result):
-                    self.publish(entity["config"]["percentage_state_topic"], entity["get_percent"](result))
-                    changed = True
-            if changed:
-                self.publish(entity["config"]["availability"]["topic"], "online")
+                    # self.publish(entity["config"]["percentage_state_topic"], entity["get_percent"](result))
+                    # changed = True
+                    data["state"] = entity["get_percent"](result)
+            # if changed:
+            #     self.publish(entity["config"]["availability"]["topic"], "online")
+            if len(data) > 0:
+                self.publish(entity["config"]["state_topic"], data)
+                self.publish(entity["config"]["availability"]["topic"], {"state": "online"})
         self.result = result
         time.sleep(1)
 

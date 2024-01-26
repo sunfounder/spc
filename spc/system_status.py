@@ -6,7 +6,6 @@ from .ha_api import HA_API
 import time
 
 log = Logger('SYSTEM_STATUS')
-ha = HA_API()
 
 def get_cpu_temperature():
     cmd = 'cat /sys/class/thermal/thermal_zone0/temp'
@@ -123,7 +122,8 @@ def _get_ip_address():
 # IP address
 def get_ip_address():
     ip = None
-    if ha.is_homeassistant_addon():
+    if HA_API.is_homeassistant_addon():
+        ha = HA_API()
         IPs = ha.get_ip()
         if len(IPs) == 0:
             IPs = _get_ip_address()

@@ -406,8 +406,13 @@ def shutdown_singal_control(data):
 
     if shutdown_request in [1, 2]:
         # TODO: Handler before ending
-        os.system("sudo poweroff")
-        time.sleep(1)
+        if ha.is_homeassistant_addon():
+            log("Request HA shutdown.", level="INFO")
+            ha.shutdown()
+            time.sleep(1)
+        else:
+            os.system("sudo poweroff")
+            time.sleep(1)
 
 # external_unplugged_handler
 # =================================================================

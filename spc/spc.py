@@ -208,7 +208,7 @@ class SPC():
 
     def read_shutdown_battery_pct(self) -> int:
         try:
-            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=100))
+            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=25))
             if self.shutdown_battery_pct <= self.SHUTDOWM_BATTERY_MIN:
                 self.shutdown_battery_pct = self.SHUTDOWM_BATTERY_MIN
                 self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)

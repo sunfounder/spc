@@ -47,6 +47,7 @@ class SPC():
 
     rtc_time_map = (23, 7, '>BBBBBBB')  # Detach from data_map to not read on read_all
     firmware_version_map = (30, 3, '>BBB')
+    rstflag_map = (33, 1, '>B')
 
     basic_data = [
         'board_id',
@@ -309,3 +310,9 @@ class SPC():
         result = struct.unpack(_format, bytes(result))
         _version = f"{result[0]}.{result[1]}.{result[2]}"
         return _version
+
+    def read_rstflag(self):
+        _start, _len, _format = self.rstflag_map
+        result = self.i2c.read_block_data(_start, _len)
+        result = struct.unpack(_format, bytes(result))
+        return result[0]

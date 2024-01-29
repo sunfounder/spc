@@ -1,7 +1,7 @@
 
 from spc.spc import SPC
-from spc.database import DB
-from spc.utils import Logger
+from spc.database import Database
+from spc.logger import Logger
 from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 import argparse
 from spc.config import Config
@@ -9,7 +9,7 @@ import time
 
 log = Logger('DATA_LOGGER')
 spc = SPC()
-db = DB()
+db = Database()
 config = Config()
 
 INTERVAL = config.getint('data-logger', 'interval', default=1)
@@ -19,8 +19,7 @@ parser.add_argument("--interval", default=INTERVAL, help="Set interval for data 
 
 args = parser.parse_args()
 
-def main():
-    while True:
+def loop():
         data = spc.read_all()
         cpu = get_cpu_info()
         memory = get_memory_info()
@@ -61,12 +60,14 @@ def main():
         # db.set('test', {"aa":"true"})
 
         time.sleep(args.interval)
-    
+
+def main():
+    while True:
+        try:
+            loop()
+        except Exception as e:
+            log(e)
+            time.sleep(5)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        log(e)
-    finally:
-        db.close_connection()
+    main()

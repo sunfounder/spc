@@ -4,23 +4,22 @@ import paho.mqtt.client as mqtt
 import time
 import json
 import socket
-from spc.utils import Logger
+from spc.logger import Logger
 from spc.spc import SPC
 from argparse import ArgumentParser
 from spc.config import Config
+from spc.database import Database
 
 import time
 
 log = Logger("MQTT_Client")
 
 class MQTT_Client:
-    def __init__(self, host, port, node_name, username=None, password=None, discovery_perfix="homeassistant"):
-        self.host = host
-        self.port = port
+    TIMEOUT = 5
+
+    def __init__(self, node_name, discovery_perfix="homeassistant"):
         self.node_name = node_name
         self.node_id = node_name.lower().replace(' ', '_').replace('-', '_')
-        self.username = username
-        self.password = password
         self.discovery_perfix = discovery_perfix
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
@@ -28,21 +27,37 @@ class MQTT_Client:
         self.entities = {}
         self.setters = {}
         self.preset_mode = "normal"
-        self._ready = False
+        self.connected = None
 
-    def isready(self):
-        return self._ready
+    def config(self, host, port, username=None, password=None):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
 
     def start(self):
+        self.connected = None
         if (self.username != None and self.password != None):
             self.client.username_pw_set(self.username, self.password)
         try:
             self.client.connect(self.host, self.port)
         except socket.gaierror:
             log(f"Connection Failed. Name or service not known: {self.host}:{self.port}", level="WARNING")
-            return
+            return False
+        
         self.client.loop_start()
-        self.init()
+        timestart = time.time()
+        while time.time() - timestart < self.TIMEOUT:
+            if self.connected == True:
+                log(f"Connected to broker", level="INFO")
+                self.init()
+                return True
+            elif self.connected == False:
+                log(f"Connection Failed. Check username and password", level="WARNING")
+                return False
+            time.sleep(1)
+        log(f"Connection Failed. Timeout", level="WARNING")
+        return False
 
     # upload configs:
     def init(self):
@@ -65,6 +80,10 @@ class MQTT_Client:
     def on_connect(self, client, userdata, flags, rc):
         if rc != 0:
             print(f"Connection Failed.")
+            self.connected = False
+        else:
+            print(f"Connected to broker")
+            self.connected = True
     
     def on_message(self, client, userdata, msg):
         if msg.topic in self.setters:
@@ -143,10 +162,7 @@ class MQTT_Client:
     def publish_state(self, topic, state):
         self.publish(topic, {"state": state})
 
-def main():
-    config = Config()
-    spc = SPC()
-
+class SPC_MQTT_Client:
     ENTITIES = [
         {
             "component": "sensor",
@@ -171,24 +187,24 @@ def main():
         },
         {
             "component": "sensor",
-            "name": "USB Voltage",
+            "name": "External Input Voltage",
             "device_class": "voltage",
             "unit_of_measurement": "V",
-            "get_state": lambda data: data["usb_voltage"] / 1000,
+            "get_state": lambda data: data["external_input_voltage"] / 1000,
         },
         {
             "component": "sensor",
-            "name": "Output Voltage",
+            "name": "Raspberry Pi Voltage",
             "device_class": "voltage",
             "unit_of_measurement": "V",
-            "get_state": lambda data: data["output_voltage"] / 1000,
+            "get_state": lambda data: data["raspberry_pi_voltage"] / 1000,
         },
         {
             "component": "sensor",
-            "name": "Output Current",
+            "name": "Raspberry Pi Current",
             "device_class": "current",
             "unit_of_measurement": "A",
-            "get_state": lambda data: data["output_current"] / 1000,
+            "get_state": lambda data: data["raspberry_pi_current"] / 1000,
         },
         {
             "component": "binary_sensor",
@@ -210,9 +226,9 @@ def main():
         },
         {
             "component": "binary_sensor",
-            "name": "USB Plugged",
+            "name": "External Plugged in",
             "device_class": "plug",
-            "get_state": lambda data: "ON" if data["is_usb_plugged_in"] > 3 else "OFF",
+            "get_state": lambda data: "ON" if data["is_plugged_in"] > 3 else "OFF",
         },
         {
             "component": "fan",
@@ -226,59 +242,142 @@ def main():
             "preset_modes": ["auto", "quiet", "normal", "performance"],
         },
     ]
+
+
+    def __init__(self):
+        self.config = Config()
+        self.spc = SPC()
+        name = self.spc.device.name
+        self.mqtt_client = MQTT_Client(node_name=name)
+        self.db = Database()
+        self.connected = None
+
+        self.host = self.config.get("mqtt", "host")
+        self.port = self.config.getint("mqtt", "port")
+        self.username = self.config.get("mqtt", "username")
+        self.password = self.config.get("mqtt", "password")
+
+        self.result = None
+
+    def set_config(self, host=None, port=None, username=None, password=None):
+        configs = {}
+        if host != None:
+            self.host = host
+            self.config.set("mqtt", "host", host)
+            configs["mqtt_host"] = host
+        if port != None:
+            self.port = port
+            self.config.set("mqtt", "port", port)
+            configs["mqtt_port"] = port
+        if username != None:
+            self.username = username
+            self.config.set("mqtt", "username", username)
+            configs["mqtt_username"] = username
+        if password != None:
+            self.password = password
+            self.config.set("mqtt", "password", password)
+            configs["mqtt_password"] = password
+        
+        if len(configs) > 0:
+            self.db.set("config", configs)
+
+    def connect_mqtt(self):
+        self.mqtt_client.config(self.host, self.port, self.username, self.password)
+
+        for entity in self.ENTITIES:
+            self.mqtt_client.create_entity(**entity)
+
+        status = self.mqtt_client.start()
+        return status
+
+    def check_config_update(self):
+        host = self.db.get("config", "mqtt_host")
+        port = self.db.get("config", "mqtt_port")
+        username = self.db.get("config", "mqtt_username")
+        password = self.db.get("config", "mqtt_password")
+        changed = False
+        if host != None and host != "" and host != self.host:
+            self.host = host
+            changed = True
+            log(f'MQTT host changed to "{host}"', level="DEBUG")
+        if port != None and port != "" and port != self.port:
+            self.port = port
+            changed = True
+            log(f'MQTT port changed to "{port}"', level="DEBUG")
+        if username != None and username != "" and username != self.username:
+            self.username = username
+            changed = True
+            log(f'MQTT username changed to "{username}"', level="DEBUG")
+        if password != None and password != "" and password != self.password:
+            self.password = password
+            changed = True
+            log(f'MQTT password changed to "{password}"', level="DEBUG")
+        return changed
+
+    def publish(self, topic, data):
+        log("Publishing to {}: {}".format(topic, data), level="INFO")
+        self.mqtt_client.publish(topic, data)
+
+    def run(self):
+        result = self.spc.read_all()
+        for entity in self.mqtt_client.entities.values():
+            # changed = False
+            data = {}
+            if "get_state" in entity:
+                if self.result == None or entity["get_state"](self.result) != entity["get_state"](result):
+                    # self.publish(entity["config"]["state_topic"], entity["get_state"](result))
+                    # changed = True
+                    data["state"] = entity["get_state"](result)
+            if "get_preset_mode" in entity:
+                if self.result == None or entity["get_preset_mode"](self.result) != entity["get_preset_mode"](result):
+                    # self.publish(entity["config"]["preset_mode_state_topic"], entity["get_preset_mode"](result))
+                    # changed = True
+                    data["state"] = entity["get_preset_mode"](result)
+            if "get_percent" in entity:
+                if self.result == None or entity["get_percent"](self.result) != entity["get_percent"](result):
+                    # self.publish(entity["config"]["percentage_state_topic"], entity["get_percent"](result))
+                    # changed = True
+                    data["state"] = entity["get_percent"](result)
+            # if changed:
+            #     self.publish(entity["config"]["availability"]["topic"], "online")
+            if len(data) > 0:
+                self.publish(entity["config"]["state_topic"], data)
+                self.publish(entity["config"]["availability"]["topic"], {"state": "online"})
+        self.result = result
+        time.sleep(1)
+
+def main():
+    RETRY_TIME = 1
     parser = ArgumentParser()
-    parser.add_argument("-H", "--host", default=config.get("mqtt", "host"), help="MQTT broker host")
-    parser.add_argument("-p", "--port", type=int, default=config.getint("mqtt", "port"), help="MQTT broker port")
-    parser.add_argument("-u", "--username", default=config.get("mqtt", "username"), help="MQTT broker username")
-    parser.add_argument("-P", "--password", default=config.get("mqtt", "password"), help="MQTT broker password")
+    parser.add_argument("-H", "--host", default=None, help="MQTT broker host")
+    parser.add_argument("-p", "--port", type=int, default=None, help="MQTT broker port")
+    parser.add_argument("-u", "--username", default=None, help="MQTT broker username")
+    parser.add_argument("-P", "--password", default=None, help="MQTT broker password")
     args = parser.parse_args()
 
-    mqtt_client = MQTT_Client(
-        host=args.host,
-        port=args.port,
-        node_name="SPC",
-        username=args.username,
-        password=args.password,
-    )
-
-    for entity in ENTITIES:
-        mqtt_client.create_entity(**entity)
-
-    spc = SPC()
-
-    mqtt_client.start()
-    if not mqtt_client.isready():
-        log("Failed to start MQTT client", level="ERROR")
-        exit(1)
+    client = SPC_MQTT_Client()
+    client.set_config(args.host, args.port, args.username, args.password)
+    
+    while True:
+        connected = client.connect_mqtt()
+        if connected:
+            break
+        else:
+            log(f"Failed to start MQTT client", level="ERROR")
+            while True:
+                time.sleep(RETRY_TIME)
+                # log("Checking MQTT client config update", level="DEBUG")
+                updated = client.check_config_update()
+                if updated:
+                    log("MQTT client config updated, Trying to connect", level="DEBUG")
+                    break
+                # else:
+                #     log("MQTT client config not updated", level="DEBUG")
 
     log("Home Assistant MQTT client started", level="INFO")
 
-    last_result = None
-
-    def publish(topic, data):
-        log("Publishing to {}: {}".format(topic, data), level="INFO")
-        mqtt_client.publish(topic, data)
-
     while True:
-        result = spc.read_all()
-        for entity in mqtt_client.entities.values():
-            changed = False
-            if "get_state" in entity:
-                if last_result == None or entity["get_state"](last_result) != entity["get_state"](result):
-                    publish(entity["config"]["state_topic"], entity["get_state"](result))
-                    changed = True
-            if "get_preset_mode" in entity:
-                if last_result == None or entity["get_preset_mode"](last_result) != entity["get_preset_mode"](result):
-                    publish(entity["config"]["preset_mode_state_topic"], entity["get_preset_mode"](result))
-                    changed = True
-            if "get_percent" in entity:
-                if last_result == None or entity["get_percent"](last_result) != entity["get_percent"](result):
-                    publish(entity["config"]["percentage_state_topic"], entity["get_percent"](result))
-                    changed = True
-            if changed:
-                publish(entity["config"]["availability"]["topic"], "online")
-        last_result = result
-        time.sleep(1)
+        client.run()
 
 if __name__ == "__main__":
     main()

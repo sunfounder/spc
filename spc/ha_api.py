@@ -1,6 +1,6 @@
 
 import requests
-from .utils import Logger
+from .logger import Logger
 import os
 
 log = Logger('HA_API')

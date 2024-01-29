@@ -8,7 +8,7 @@ from spc.spc import SPC
 from spc.config import Config
 from spc.oled import OLED, Rect
 
-from spc.utils import Logger, run_command
+from spc.logger import Logger
 import threading
 from spc.system_status import get_cpu_usage, get_ram_info, get_disk_space, get_ip_address
 from spc.ha_api import HA_API
@@ -406,30 +406,33 @@ def shutdown_singal_control(data):
 
     if shutdown_request in [1, 2]:
         # TODO: Handler before ending
-        os.system("sudo poweroff")
-        time.sleep(1)
+        if ha.is_homeassistant_addon():
+            log("Request HA shutdown.", level="INFO")
+            ha.shutdown()
+            time.sleep(1)
+        else:
+            os.system("sudo poweroff")
+            time.sleep(1)
 
-# usb_unplugged_handler
+# external_unplugged_handler
 # =================================================================
-last_usb_state = False # True, pulgged in; False, unpulgged in
+is_plugged_in = False # True, pulgged in; False, unpulgged in
 
-def usb_unplugged_handler(data):
-    global last_usb_state, usb_unplugged_shutdown
+def external_unplugged_handler(data):
+    global is_plugged_in
 
-    if 'battery' not in spc.device.peripherals:
+    if 'external_input' not in spc.device.peripherals:
         return
 
-    usb_state = data['is_usb_plugged_in']
-
-    if usb_state == True:
-        last_usb_state = True
+    if data['is_plugged_in'] == True:
+        is_plugged_in = True
     else:
-        if last_usb_state == True:
-            last_usb_state = False
+        if is_plugged_in == True:
+            is_plugged_in = False
             _shutdown_pct = spc.read_shutdown_battery_pct()
             _current_pct= data['battery_percentage']
             if _current_pct < _shutdown_pct:
-                log(f"Usb unplugged, battery is below {_shutdown_pct}, shutdown!", level="INFO")
+                log(f"External input unplugged, battery is below {_shutdown_pct}, shutdown!", level="INFO")
                 # TODO: Handler before ending
                 os.system("sudo poweroff")
                 time.sleep(1)
@@ -470,7 +473,7 @@ def main():
         try:
             data = spc.read_all()
             shutdown_singal_control(data)
-            usb_unplugged_handler(data)
+            external_unplugged_handler(data)
             fan_auto_control(data)
             draw_oled(data)
             rgb_control(data)

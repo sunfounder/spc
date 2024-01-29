@@ -1,5 +1,5 @@
 from .i2c import I2C
-from .utils import Logger
+from .logger import Logger
 from PIL import Image, ImageDraw, ImageFont
 
 log = Logger('OLED')

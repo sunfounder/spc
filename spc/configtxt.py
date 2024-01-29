@@ -1,5 +1,5 @@
 import os
-from spc.utils import Logger
+from .logger import Logger
 
 log = Logger(script_name="configtxt")
 

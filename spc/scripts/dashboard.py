@@ -4,11 +4,11 @@ import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from spc.spc import SPC
 from spc.ha_api import HA_API
-from spc.database import DB
+from spc.database import Database
 import json
 
 from spc.config import Config
-from spc.utils import Logger
+from spc.logger import Logger
 from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 
 from urllib.parse import urlparse, parse_qs
@@ -20,7 +20,7 @@ COMMAND_PATH = '/opt/spc/spc_service'
 
 spc = SPC()
 ha = HA_API()
-db = DB()
+db = Database()
 config = Config()
 
 PORT = config.getint('dashboard', 'port', default=34001)
@@ -32,24 +32,63 @@ parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), h
 
 args = parser.parse_args()
 
-last_get_all = False # if last log is get_all, do not log this time
+mqtt_connected = None
 
+def on_mqtt_connected(client, userdata, flags, rc):
+    global mqtt_connected
+    if rc==0:
+        print("Connected to broker")
+        mqtt_connected = True
+    else:
+        print("Connection failed")
+        mqtt_connected = False
+
+def test_mqtt(config, timeout=5):
+    global mqtt_connected
+    import paho.mqtt.client as mqtt
+    from socket import gaierror
+    import time
+    mqtt_connected = None
+    client = mqtt.Client()
+    client.on_connect = on_mqtt_connected
+    client.username_pw_set(config['username'], config['password'])
+    try:
+        client.connect(config['host'], config['port'])
+    except gaierror:
+        return False, "Connection failed, Check hostname and port"
+    timestart = time.time()
+    while time.time() - timestart < timeout:
+        client.loop()
+        if mqtt_connected == True:
+            return True, None
+        elif mqtt_connected == False:
+            return False, "Connection failed, Check username and password"
+    return False, "Timeout"
+
+def log_error(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            log(f"Error in {func.__name__}: {e}")
+            raise
+    return wrapper
 
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
     routes = ["/", "/dashboard", "/minimal"]
 
 
-    def send_response(self, code, message=None, is_log=True):
-        if is_log:
-            self.log_request(code)
+    def send_response(self, code, message=None):
+        self.log_request(code)
         self.send_response_only(code, message)
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
         self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Headers', '*')
 
+    @log_error
     def do_GET(self):
-
         response = None
         parsed_path = urlparse(self.path)
         query_params = parse_qs(parsed_path.query)
@@ -92,40 +131,65 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(b'File not found: %s' % filename.encode())
-    
+
+    @log_error
     def do_POST(self):
-        global last_get_all
 
         content_length = int(self.headers['Content-Length'])
         data = self.rfile.read(content_length)
         
         if self.path.startswith(self.api_prefix):
             command = self.path[len(self.api_prefix):]
-            self.handle_post(command, data)
-            last_get_all = False
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
+            result = self.handle_post(command, data)
+            if result["status"]:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+            else:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
         
-            response_data = {
-                'message': 'POST request received',
-                'data': data.decode()  # 将 POST 请求的内容转为字符串
-            }
-            response_json = json.dumps(response_data)
-            
+            response_json = json.dumps(result)
+            log(response_json, level='DEBUG')
             self.wfile.write(response_json.encode())
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
 
     def handle_get(self, command, param):
         data = None
+        status = True
+        error = None
         if command == "test":
             data = "OK"
+            status = True
+        elif command == 'test-mqtt':
+            mqtt_config = {}
+            if 'host' not in param:
+                status = False
+                error = "ERROR, host not found"
+            elif 'port' not in param:
+                status = False
+                error = "ERROR, port not found"
+            elif 'username' not in param:
+                status = False
+                error = "ERROR, username not found"
+            elif 'password' not in param:
+                status = False
+                error = "ERROR, password not found"
+            else:
+                mqtt_config['host'] = param['host'][0]
+                mqtt_config['port'] = int(param['port'][0])
+                mqtt_config['username'] = param['username'][0]
+                mqtt_config['password'] = param['password'][0]
+                result = test_mqtt(mqtt_config)
+                data = {
+                    "status": result[0],
+                    "error": result[1]
+                }
+                status = True
         elif command == 'get-all':
             data = spc.read_all()
             data['cpu'] = get_cpu_info()
@@ -135,44 +199,65 @@ class RequestHandler(BaseHTTPRequestHandler):
             data['boot_time'] = get_boot_time()
             if ha.is_homeassistant_addon():
                 data['network']["type"] = ha.get_network_connection_type()
+            status = True
         elif command == 'get-config':
+            status = True
             data = config.get_all()
+            log(f"config: {data}", level='DEBUG')
         elif command == 'get-history':
             n = 1
             if 'n' in param:
                 n = int(param['n'][0])
-            data = db.get_latest_data('history', n=n)
+            status = True
+            data = db.get('history', n=n)
         elif command == "get-time-range":
             if 'start' in param and 'end' in param:
                 start = int(param['start'][0])
                 end = int(param['end'][0])
+                status = True
                 data = db.get_data_by_time_range('history', start, end)
             else:
-                data = "ERROR, start or end not found"
+                status = False
+                error = "ERROR, start or end not found"
         else:
-            return json.dumps({"data": "", "error": f"Command not found {command}"})
-        return json.dumps({"data": data})
+            status = False
+            error = f"Command not found {command}"
+        result = {"status": status}
+        if status:
+            result['data'] = data
+        else:
+            result['error'] = error
+        return json.dumps(result)
 
     def handle_post(self, command, payload):
         payload = payload.decode()
-        data = json.loads(payload)['data']
+        payload = json.loads(payload)
+        if ("data" not in payload):
+            return {"status": False, "error": f'Key [data] not found'}
+        data = payload['data']
         if command == 'set-fan-mode':
             spc.set_fan_mode(data)
-            db.set('history', {'fan_mode': data})
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
-            db.set('history', {'fan_state': data})
         elif command == 'set-config':
             db_config = {}
+            print(data)
             for section_name in data:
                 section = data[section_name]
                 for key in section:
                     value = section[key]
                     config.set(section_name, key, value)
-                    db_config[f"{section_name}.{key}"] = value
-            db.set('config', db_config)
+                    db_config[f"{section_name}_{key}"] = value
+                    print(f"Set {section_name}.{key} = {value}")
+            
+            status, result = db.set('config', db_config)
+            if not status:
+                return {"status": False, "error": result}
         elif command == 'restart-service':
-            os.system(f"python3 {COMMAND_PATH} restart")
+            run_command(f"python3 {COMMAND_PATH} restart")
+        else:
+            return {"status": False, "error": f"Command not found [{command}]"}
+        return {"status": True, "data": data}
 
     def log_message(self, format, *args):
         msg = format % args

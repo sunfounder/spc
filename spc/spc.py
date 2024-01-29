@@ -2,10 +2,11 @@
 from .i2c import I2C
 import struct
 from .config import Config
-from .utils import Logger
+from .logger import Logger
 from .system_status import get_cpu_temperature
 from .devices import Devices
 import sys
+import time
 
 # init log
 # =================================================================
@@ -17,8 +18,8 @@ class SPC():
 
     I2C_ADDRESS = 0x5A
 
+    EXTERNAL_INPUT = 0
     BATTERY = 1
-    USB = 0
 
     SHUTDOWM_BATTERY_MIN = 10
 
@@ -27,17 +28,17 @@ class SPC():
     data_map = {
         'board_id': (0, 1, 'B'),  # data start index, data length, format
         'vcc_voltage': (1, 2, '>H'),
-        'usb_voltage': (3, 2, '>H'),
-        'usb_current': (5, 2, '>h'),
-        'output_voltage': (7, 2, '>H'),
-        'output_current': (9, 2, '>h'),
+        'external_input_voltage': (3, 2, '>H'),
+        'external_input_current': (5, 2, '>h'),
+        'raspberry_pi_voltage': (7, 2, '>H'),
+        'raspberry_pi_current': (9, 2, '>h'),
         'battery_voltage': (11, 2, '>H'),
         'battery_current': (13, 2, '>h'),
         'battery_percentage': (15, 1, 'B'),
         'battery_capacity': (16, 2, '>H'),
         #
         'power_source': (18, 1, 'B'),
-        'is_usb_plugged_in': (19, 1, 'B'),
+        'is_plugged_in': (19, 1, 'B'),
         'is_charging': (20, 1, 'B'),
         'fan_speed': (21, 1, 'B'),
         'shutdown_request': (22, 1, 'B'),
@@ -64,14 +65,14 @@ class SPC():
             'is_charging',
             'shutdown_battery_pct',
         ],
-        'usb_in': [
-            'usb_voltage',
-            'usb_current',
-            'is_usb_plugged_in',
+        'external_input': [
+            'external_input_voltage',
+            'external_input_current',
+            'is_plugged_in',
         ],
-        'output': [
-            'output_voltage',
-            'output_current',
+        'raspberry_pi_power': [
+            'raspberry_pi_voltage',
+            'raspberry_pi_current',
         ],
         'fan': [
             'fan_speed',
@@ -111,7 +112,7 @@ class SPC():
                 result = self.i2c.read_block_data(start, length)
                 break
             except TimeoutError:
-                time.sleep(.01)
+                time.sleep(0.01)
                 continue
             # other exceptions will be raised
         else:
@@ -150,20 +151,20 @@ class SPC():
         result = self._read_data('battery_current')
         return int(result)
 
-    def read_usb_voltage(self) -> int:
-        result = self._read_data('usb_voltage')
+    def read_external_input_voltage(self) -> int:
+        result = self._read_data('external_input_voltage')
         return int(result)
 
-    def read_usb_current(self) -> int:
-        result = self._read_data('usb_current')
+    def read_external_input_current(self) -> int:
+        result = self._read_data('external_input_current')
         return int(result)
 
-    def read_output_voltage(self) -> int:
-        result = self._read_data('output_voltage')
+    def read_raspberry_pi_voltage(self) -> int:
+        result = self._read_data('raspberry_pi_voltage')
         return int(result)
 
-    def read_output_current(self) -> int:
-        result = self._read_data('output_current')
+    def read_raspberry_pi_current(self) -> int:
+        result = self._read_data('raspberry_pi_current')
         return int(result)
 
     def read_ref_voltage(self) -> int:
@@ -174,8 +175,8 @@ class SPC():
         result = self._read_data('power_source')
         return int(result)
 
-    def read_is_usb_plugged_in(self) -> int:
-        result = self._read_data('is_usb_plugged_in')
+    def read_is_plugged_in(self) -> int:
+        result = self._read_data('is_plugged_in')
         return int(result)
 
     def read_is_charging(self) -> int:
@@ -194,6 +195,10 @@ class SPC():
         self.fan_mode = self.config.get('auto', 'fan_mode')
         return self.fan_mode
 
+    def read_fan_state(self) -> str:
+        self.fan_state = self.config.get('auto', 'fan_state') == 'True'
+        return self.fan_state
+
     def read_board_id(self) -> int:
         result = self._read_data('board_id')
         return int(result)
@@ -204,7 +209,7 @@ class SPC():
 
     def read_shutdown_battery_pct(self) -> int:
         try:
-            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=100))
+            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=25))
             if self.shutdown_battery_pct <= self.SHUTDOWM_BATTERY_MIN:
                 self.shutdown_battery_pct = self.SHUTDOWM_BATTERY_MIN
                 self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
@@ -227,11 +232,10 @@ class SPC():
             data[name] = result[i]
         data['board_name'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
-        data['is_usb_plugged_in'] = data['is_usb_plugged_in'] == 1
-        # data['power_source'] = 'Battery' if data['power_source'] == 1 else 'USB'
+        data['is_plugged_in'] = data['is_plugged_in'] == 1
         data['cpu_temperature'] = get_cpu_temperature()
-        data['fan_mode'] = self.fan_mode
-        data['fan_state'] = self.fan_state
+        data['fan_mode'] = self.read_fan_mode()
+        data['fan_state'] = self.read_fan_state()
         data['shutdown_battery_pct'] = self.shutdown_battery_pct
         return data
 

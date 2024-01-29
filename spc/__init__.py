@@ -1,5 +1,7 @@
 from .version import __version__
 
+RIGHT_STR_MAX_LEN = 20
+
 def monitor(spc):
     import time
     print("\033c", end='')  # clear terminal windows
@@ -30,20 +32,21 @@ def print_all_data_once(spc):
     if ('battery'  in spc.device.peripherals):
         print(f"Battery voltage:          {str(data_buffer['battery_voltage'])+' mV':<10s}")
         print(f"Battery current:          {str(data_buffer['battery_current'])+' mA':<10s}")
-        print(f"Battery capactiy:         {str(data_buffer['battery_capactiy'])+' mAh':<10s}")
+        print(f"Battery capacity:         {str(data_buffer['battery_capacity'])+' mAh':<10s}")
         print(f"Battery percentage:       {str(data_buffer['battery_percentage'])+' %':<10s}")
-    if ('usb_in'  in spc.device.peripherals):
-        print(f"USB voltage:              {str(data_buffer['usb_voltage'])+' mV':<10s}")
-        print(f"USB current:              {str(data_buffer['usb_current'])+' mA':<10s}")
-    if ('output'  in spc.device.peripherals):
-        print(f"Output voltage:           {str(data_buffer['output_voltage'])+' mV':<10s}")
-        print(f"Output current:           {str(data_buffer['output_current'])+' mA':<10s}")
-    if ('battery'  in spc.device.peripherals):
         print(f"Charging:                 {'Charging' if data_buffer['is_charging'] else 'Not charging':<15s}")
-        print(f"Power source:             {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'USB':<15s}")
-        print(f"USB plugged in:           {'Plugged in' if data_buffer['is_usb_plugged_in'] else 'Unplugged':<15s}")
+    if ('external_input'  in spc.device.peripherals):
+        print(f"External input voltage:   {str(data_buffer['external_input_voltage'])+' mV':<10s}")
+        print(f"External input current:   {str(data_buffer['external_input_current'])+' mA':<10s}")
+        print(f"Plugged in:               {'Plugged in' if data_buffer['is_plugged_in'] else 'Unplugged':<15s}")
+    if ('raspberry_pi_power'  in spc.device.peripherals):
+        print(f"Raspberry Pi voltage:     {str(data_buffer['raspberry_pi_voltage'])+' mV':<10s}")
+        print(f"Raspberry Pi current:     {str(data_buffer['raspberry_pi_current'])+' mA':<10s}")
+    if ('power_source_sensor'  in spc.device.peripherals):
+        print(f"Power source:             {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'External':<15s}")
     if ('fan'  in spc.device.peripherals):
         print(f"Fan speed:                {str(data_buffer['fan_speed'])+' %':<10s}")
+        print(f"CPU temperature:          {str(data_buffer['cpu_temperature'])+' °C':<{RIGHT_STR_MAX_LEN}s}")
 
 
 def print_all_data_once_json(spc):
@@ -62,8 +65,8 @@ def main():
     parser.add_argument('-f', '--fan', nargs='?', const=-1, type=int, metavar="speed percentage", help='get/set the speed of fan')
     parser.add_argument('-F', '--fan-mode', nargs='?', const=-1, type=str, choices=['auto', 'quiet', 'normal', 'performance'], help='get/set the mode of fan')
     parser.add_argument('-b', '--battery', action='store_true', help='battery voltage, current, percentage')
-    parser.add_argument('-u', '--usb', action='store_true', help='usb voltage')
-    parser.add_argument('-o', '--output', action='store_true', help='output voltage, current')
+    parser.add_argument('-e', '--external_input', action='store_true', help='external input')
+    parser.add_argument('-o', '--raspberry_pi_power', action='store_true', help='raspberry pi voltage, current')
     parser.add_argument('-p', '--powered', action='store_true', help='power source')
     parser.add_argument('-c', '--charge', action='store_true', help='is charging')
     parser.add_argument('-j', '--json', action='store_true', help='output json format')
@@ -113,23 +116,23 @@ battery_percentage: {battery_percentage:-5d}
         '''
         print(battery_info)
 
-    elif args.usb:
-        usb_voltage = spc.read_usb_voltage()
-        print(f'usb_voltage: {usb_voltage/1000.0:2.3f} V')
-    elif args.output:
-        output_voltage = spc.read_output_voltage()
-        output_current = spc.read_output_current()
-        output_info = f'''\
-output_voltage: {output_voltage/1000.0:2.3f} V
-output_current: {output_current:-5d} mA            
+    elif args.external_input:
+        external_input_voltage = spc.read_external_input_voltage()
+        print(f'external_input_voltage: {external_input_voltage/1000.0:2.3f} V')
+    elif args.raspberry_pi_power:
+        raspberry_pi_voltage = spc.read_raspberry_pi_voltage()
+        raspberry_pi_current = spc.read_raspberry_pi_current()
+        raspberry_pi_power = f'''\
+raspberry_pi_voltage: {raspberry_pi_voltage/1000.0:2.3f} V
+raspberry_pi_current: {raspberry_pi_current:-5d} mA            
         '''
-        print(output_info)
+        print(raspberry_pi_power)
     elif args.powered:
         power_source = spc.read_power_source()
         if power_source == 1:
-            print('Power source: usb')
+            print('Power source: External')
         else:
-            print('Power source: battery')
+            print('Power source: Battery')
     elif args.charge:
         is_charge = spc.read_is_charging()
         if is_charge == 1:

@@ -1,11 +1,14 @@
 import configparser
 import os
-from .utils import run_command, Logger
+from .utils import run_command
+from .logger import Logger
+from .ha_api import HA_API
 
 log = Logger(script_name="config")
 
 class Config:
     default_config_file = "/opt/spc/config"
+    default_ha_config_file = "/data/config" # home assistant addon config file
     default_values = {
         "auto": {
             "reflash_interval": 1,
@@ -20,7 +23,7 @@ class Config:
             "rgb_speed": 50,
             "rgb_pwm_frequency": 1000,
             "rgb_pin": 10,  # 10, 12, 21
-            "shutdown_battery_pct": 100,
+            "shutdown_battery_pct": 25,
         },
         "mqtt": {
             "host": "core-mosquitto",
@@ -39,7 +42,12 @@ class Config:
         }
     }
 
-    def __init__(self, config_file=default_config_file):
+    def __init__(self, config_file=None):
+        if config_file is None:
+            if HA_API.is_homeassistant_addon():
+                config_file = self.default_ha_config_file
+            else:
+                config_file = self.default_config_file
         self.config_file = config_file
         self.config = configparser.ConfigParser()
         if not os.path.exists(config_file):

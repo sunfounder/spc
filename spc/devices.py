@@ -7,9 +7,9 @@ class Devices():
             "address": 0x00,
             "peripherals": [
                 'battery',
-                'usb_in',
+                'external_input',
                 'power_source_sensor',
-                'output',
+                'raspberry_pi_power',
                 'fan',
                 'ir',
             ],
@@ -18,7 +18,7 @@ class Devices():
             'id': 'pironman_4',
             "address": 0x01,
             "peripherals": [
-                'usb_in',
+                'external_input',
                 'fan',
                 'oled',
                 'ws2812',

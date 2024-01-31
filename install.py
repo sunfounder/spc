@@ -178,7 +178,7 @@ def install():
     do(msg="update pip install build",
         cmd=f'{source_venv} && pip3 install --upgrade pip build')
     do(msg="build spc", cmd=f'{source_venv} && python3 -m build')
-    do(msg="install spc", cmd=f'{source_venv} && pip3 install --force-reinstall ./dist/spc-{__version__}-py3-none-any.whl')
+    do(msg="install spc", cmd=f'{source_venv} && pip3 install --force-reinstall --no-cache ./dist/spc-{__version__}-py3-none-any.whl')
     do(msg="clean spc", cmd='rm -rf ./dist ./build ./spc.egg-info')
 
     # ================

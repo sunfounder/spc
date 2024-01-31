@@ -1,6 +1,9 @@
 # Dashboard Reference API
 
+## Table of Contents
 - [Dashboard Reference API](#dashboard-reference-api)
+  - [Table of Contents](#table-of-contents)
+  - [Server Configuration](#server-configuration)
   - [Endpoints](#endpoints)
     - [GET /test](#get-test)
     - [GET /test-mqtt](#get-test-mqtt)
@@ -13,6 +16,12 @@
     - [POST /set-fan-mode](#post-set-fan-mode)
     - [POST /set-fan-state](#post-set-fan-state)
     - [POST /set-config](#post-set-config)
+
+## Server Configuration
+
+- Port: `34001`
+- Base URL: `/api/v1.0/`
+
 
 ## Endpoints
 

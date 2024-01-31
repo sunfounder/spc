@@ -15,6 +15,7 @@ from urllib.parse import urlparse, parse_qs
 from os import system as run_command
 
 log = Logger('DASHBOARD')
+LOG_PATH = '/opt/spc/log/'
 STATIC_URL = '/opt/spc/www/'
 COMMAND_PATH = '/opt/spc/spc_service'
 
@@ -22,6 +23,8 @@ spc = SPC()
 ha = HA_API()
 db = Database()
 config = Config()
+
+DEBUG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 PORT = config.getint('dashboard', 'port', default=34001)
 
@@ -74,6 +77,17 @@ def log_error(func):
             raise
     return wrapper
 
+# get all log files in /opt/spc/log
+def get_log_list():
+    import os
+    log_files = os.listdir(LOG_PATH)
+    return log_files
+
+def get_log_level(line):
+    for level in DEBUG_LEVELS:
+        if f"[{level}]" in line:
+            return level
+    return DEBUG_LEVELS.index('INFO')
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
     routes = ["/", "/dashboard", "/minimal"]
@@ -211,14 +225,62 @@ class RequestHandler(BaseHTTPRequestHandler):
             status = True
             data = db.get('history', n=n)
         elif command == "get-time-range":
-            if 'start' in param and 'end' in param:
-                start = int(param['start'][0])
-                end = int(param['end'][0])
-                status = True
-                data = db.get_data_by_time_range('history', start, end)
-            else:
+            if 'start' not in param or 'end' not in param:
                 status = False
                 error = "ERROR, start or end not found"
+            else:
+                start = int(param['start'][0])
+                end = int(param['end'][0])
+                key = "*"
+                if 'key' in param:
+                    key = param['key'][0]
+                status = True
+                data = db.get_data_by_time_range('history', start, end, key)
+        elif command == "get-log-list":
+            status = True
+            data = get_log_list()
+        elif command == "get-log":
+            if 'log' not in param:
+                status = False
+                error = "ERROR, file not found"
+            else:
+                log_file = param['log'][0]
+                n = 100
+                if "n" in param:
+                    n = int(param['n'][0])
+                filter = []
+                if "filter" in param:
+                    filter = param['filter'][0]
+                    filter = filter.split(',')
+                level = "INFO"
+                if "level" in param:
+                    level = param['level'][0]
+                status = True
+                with open(f"{LOG_PATH}{log_file}", 'r') as f:
+                    lines = f.readlines()
+                    lines = lines[-n:]
+                    data = []
+                    for line in lines:
+                        check = True
+                        if len(filter) > 0:
+                            for f in filter:
+                                if f in line:
+                                    break
+                            else:
+                                check = False
+                        log_level = DEBUG_LEVELS.index(level)
+                        current_log_level = get_log_level(line)
+                        if current_log_level < log_level:
+                            check = False
+                        if check:
+                            data.append(line)
+                status = True
+                try:
+                    with open(f"{LOG_PATH}{log_file}", 'r') as f:
+                        data = f.read()
+                except FileNotFoundError:
+                    status = False
+                    error = f"ERROR, file not found"
         else:
             status = False
             error = f"Command not found {command}"

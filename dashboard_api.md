@@ -14,7 +14,6 @@
     - [POST /set-fan-state](#post-set-fan-state)
     - [POST /set-config](#post-set-config)
 
-
 ## Endpoints
 
 ### GET /test

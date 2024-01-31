@@ -1,8 +1,20 @@
 # Dashboard Reference API
 
-- Port: `34001`
-- Base URL: `/api/v1.0/`
-  
+- [Dashboard Reference API](#dashboard-reference-api)
+  - [Endpoints](#endpoints)
+    - [GET /test](#get-test)
+    - [GET /test-mqtt](#get-test-mqtt)
+    - [GET /get-all (deprecated)](#get-get-all-deprecated)
+    - [GET /get-config](#get-get-config)
+    - [GET /get-history](#get-get-history)
+    - [GET /get-time-range](#get-get-time-range)
+    - [GET /get-log-list](#get-get-log-list)
+    - [GET /get-log](#get-get-log)
+    - [POST /set-fan-mode](#post-set-fan-mode)
+    - [POST /set-fan-state](#post-set-fan-state)
+    - [POST /set-config](#post-set-config)
+
+
 ## Endpoints
 
 ### GET /test

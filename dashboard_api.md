@@ -87,3 +87,26 @@
   - `{"status": false, "error": "ERROR, file not found"}`
   - `{"status": true, "data": []}`
 
+### POST /set-fan-mode
+
+- Description: Set fan mode
+- Data:
+  - `data` - Fan mode `['auto', 'performance', 'normal', 'quiet']`
+- Response:
+  - `{"status": true, "data": data}`
+
+### POST /set-fan-state
+
+- Description: Set fan state
+- Data:
+  - `data` - Fan state `[true, false]`
+- Response:
+  - `{"status": true, "data": data}`
+
+### POST /set-config
+
+- Description: Set configuration
+- Data:
+  - `data` - Configuration data
+- Response:
+  - `{"status": true, "data": data}`

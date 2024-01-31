@@ -315,8 +315,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             status, result = db.set('config', db_config)
             if not status:
                 return {"status": False, "error": result}
-        elif command == 'restart-service':
-            run_command(f"python3 {COMMAND_PATH} restart")
         else:
             return {"status": False, "error": f"Command not found [{command}]"}
         return {"status": True, "data": data}

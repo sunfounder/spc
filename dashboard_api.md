@@ -1,5 +1,4 @@
 # Dashboard Reference API
-=======================
 
 - Port: `34001`
 - Base URL: `/api/v1.0/`
@@ -64,16 +63,7 @@
 
 - Description: Get log list
 - Response:
-    ```
-    {
-      "status": true,
-      "data": [
-        "config.log",
-        "mqtt_client.log",
-        "data_logger.log.2",
-      ]
-    }
-    ```
+  - `{"status": true, "data": []}`
 
 ### GET /get-log
 

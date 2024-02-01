@@ -31,8 +31,6 @@ parser.add_argument('--disable-autostart', action='store_true',
                     help='Do not start SPC automatically')
 parser.add_argument('--skip-config-txt', action='store_true',
                     help='Do not set config.txt')
-# parser.add_argument('--mqtt-client', action=argparse.BooleanOptionalAction, default=False, help='Enable MQTT client or not')
-parser.add_argument('--mqtt-client', action='store_true', default=False, help='Enable MQTT client or not')
 
 args = parser.parse_args()
 

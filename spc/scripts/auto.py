@@ -27,26 +27,26 @@ config = Config()
 # =================================================================
 parser = ArgumentParser()
 parser.add_argument("command", choices=["start", "restart"], nargs="?", help="Command")
-parser.add_argument("-r", "--reflash-interval", type=float, default=config.getfloat("auto",
+parser.add_argument("-r", "--reflash-interval", type=float, default=config.get("auto",
                     "reflash_interval"), help="Data update Interval")
-parser.add_argument("-R", "--retry-interval", type=int, default=config.getint(
+parser.add_argument("-R", "--retry-interval", type=int, default=config.get(
     "auto", "retry_interval"), help="Retry interval after error")
 parser.add_argument("-m", "--fan-mode", choices=["auto", "quiet", "normal",
                     "performance"], default=config.get("auto", "fan_mode"), help="Fan mode")
 parser.add_argument("-t", "--temperature-unit", choices=[
                     "C", "F"], default=config.get("auto", "temperature_unit"), help="Temperature unit")
 parser.add_argument("-w", "--rgb-switch", type=bool,
-                    default=config.getboolean("auto", "rgb_switch"), help="RGB switch")
+                    default=config.get("auto", "rgb_switch"), help="RGB switch")
 parser.add_argument("-y", "--rgb-style", choices=["breath", "leap", "flow", "raise_up",
                     "colorful"], default=config.get("auto", "rgb_style"), help="RGB style")
 parser.add_argument("-c", "--rgb-color",
                     default=config.get("auto", "rgb_color"), help="RGB color")
 parser.add_argument("-p", "--rgb-speed",
-                    default=config.getint("auto", "rgb_speed"), help="RGB speed")
+                    default=config.get("auto", "rgb_speed"), help="RGB speed")
 parser.add_argument("-f", "--rgb-pwm-frequency", type=int,
-                    default=config.getint("auto", "rgb_pwm_frequency"), help="RGB PWM frequency")
+                    default=config.get("auto", "rgb_pwm_frequency"), help="RGB PWM frequency")
 parser.add_argument("-i", "--rgb-pin", type=int,
-                    choices=[10, 12, 21], default=config.getint("auto", "rgb_pin"), help="RGB pin")
+                    choices=[10, 12, 21], default=config.get("auto", "rgb_pin"), help="RGB pin")
 
 args = parser.parse_args()
 
@@ -57,7 +57,7 @@ def handle_param_change():
     global has_change, need_reboot
     for param in args.__dict__:
         new_value = args.__dict__[param]
-        if str(new_value) == config.get("auto", param):
+        if new_value == config.get("auto", param):
             continue
         has_change = True
         config.set("auto", param, new_value)
@@ -114,8 +114,8 @@ AUTO_FAN_LEVELS = [
     },
 ]
 
-fan_state = config.getboolean("auto", "fan_state")
-fan_speed = config.getint("auto", "fan_speed")
+fan_state = config.get("auto", "fan_state")
+fan_speed = config.get("auto", "fan_speed")
 last_fan_state = None
 last_fan_speed = None
 auto_fan_level = 0
@@ -128,7 +128,7 @@ def fan_auto_control(data):
         return
 
     # read fan_state from config file
-    _fan_state = config.getboolean("auto", "fan_state")
+    _fan_state = config.get("auto", "fan_state")
     # if the fan is off
     if _fan_state is False:
         if last_fan_speed is None or last_fan_speed != fan_speed:
@@ -354,10 +354,10 @@ def rgb_control(data):
         return
 
     # read rgb config from file
-    _rgb_switch = config.getboolean("auto", "rgb_switch", default=False)
-    _rgb_style = config.config.get("auto", "rgb_style")
-    _rgb_color = config.config.get("auto", "rgb_color")
-    _rgb_speed = config.config.getint("auto", "rgb_speed")
+    _rgb_switch = config.get("auto", "rgb_switch", default=False)
+    _rgb_style = config.get("auto", "rgb_style")
+    _rgb_color = config.get("auto", "rgb_color")
+    _rgb_speed = config.get("auto", "rgb_speed")
     # if change
     if (_rgb_switch != rgb_swtich or \
         _rgb_style != rgb_style or \
@@ -424,18 +424,20 @@ def external_unplugged_handler(data):
     if 'external_input' not in spc.device.peripherals:
         return
 
-    if data['is_plugged_in'] == True:
-        is_plugged_in = True
-    else:
+    if data['is_plugged_in'] != is_plugged_in:
+        is_plugged_in = data['is_plugged_in']
         if is_plugged_in == True:
-            is_plugged_in = False
-            _shutdown_pct = spc.read_shutdown_battery_pct()
-            _current_pct= data['battery_percentage']
-            if _current_pct < _shutdown_pct:
-                log(f"External input unplugged, battery is below {_shutdown_pct}, shutdown!", level="INFO")
-                # TODO: Handler before ending
-                os.system("sudo poweroff")
-                time.sleep(1)
+            log(f"External input plug in", level="INFO")
+        else:
+            log(f"External input unplugged", level="INFO")
+    if is_plugged_in == False:
+        _shutdown_pct = spc.read_shutdown_battery_pct()
+        _current_pct= data['battery_percentage']
+        if _current_pct < _shutdown_pct:
+            log(f"Battery is below {_shutdown_pct}, shutdown!", level="INFO")
+            # TODO: Handler before ending
+            os.system("sudo poweroff")
+            time.sleep(1)
 
 # main
 # =================================================================
@@ -460,6 +462,8 @@ def main():
         return
 
     log(f'SPC auto started', level='INFO')
+    log(f'Device: {spc.device.name}', level='DEBUG')
+    log(f'Device Peripherals: {spc.device.peripherals}', level='DEBUG')
     retry_flag = False
 
     if "ws2812" in spc.device.peripherals\

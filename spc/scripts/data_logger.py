@@ -12,7 +12,7 @@ spc = SPC()
 db = Database()
 config = Config()
 
-INTERVAL = config.getint('data-logger', 'interval', default=1)
+INTERVAL = config.get('data-logger', 'interval', default=1)
 
 parser = argparse.ArgumentParser(description='spc-data-logger')
 parser.add_argument("--interval", default=INTERVAL, help="Set interval for data logger, in second")

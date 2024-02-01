@@ -98,8 +98,8 @@ class SPC():
         log(f'SPC detect device: {self.device.name} ({self.device.id})')
         self.config = Config()
         self.fan_mode = self.config.get('auto', 'fan_mode')
-        self.fan_state = self.config.get('auto', 'fan_state') == 'True'
-        self.fan_speed = int(self.config.get('auto', 'fan_speed'))
+        self.fan_state = self.config.get('auto', 'fan_state')
+        self.fan_speed = self.config.get('auto', 'fan_speed')
         if self.fan_state:
             self.set_fan_speed(self.fan_speed)
         # shutdown_battery_pct
@@ -196,7 +196,7 @@ class SPC():
         return self.fan_mode
 
     def read_fan_state(self) -> str:
-        self.fan_state = self.config.get('auto', 'fan_state') == 'True'
+        self.fan_state = self.config.get('auto', 'fan_state')
         return self.fan_state
 
     def read_board_id(self) -> int:

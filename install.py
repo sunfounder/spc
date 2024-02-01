@@ -131,7 +131,7 @@ def install():
     working_dir = "/opt/spc"
     spc_server_file = "spc_server"
     service_config_file = "spc.service"
-    config_file = "config"
+    config_file = "config.json"
 
 
     # ================

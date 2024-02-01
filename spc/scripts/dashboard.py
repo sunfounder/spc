@@ -26,10 +26,10 @@ config = Config()
 
 DEBUG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
-PORT = config.getint('dashboard', 'port', default=34001)
+PORT = config.get('dashboard', 'port', default=34001)
 
 parser = argparse.ArgumentParser(description='spc-dashboard')
-parser.add_argument('--ssl', action=argparse.BooleanOptionalAction, default=config.getboolean('dashboard', 'ssl'), help='Enable SSL')
+parser.add_argument('--ssl', action=argparse.BooleanOptionalAction, default=config.get('dashboard', 'ssl'), help='Enable SSL')
 parser.add_argument('--ssl-ca-cert', default=config.get('dashboard', 'ssl_ca_cert'), help='SSL CA cert')
 parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), help='SSL cert')
 
@@ -309,6 +309,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 for key in section:
                     value = section[key]
                     config.set(section_name, key, value)
+                    print(f"Value: {value}, Type: {type(value)}")
                     db_config[f"{section_name}_{key}"] = value
                     print(f"Set {section_name}.{key} = {value}")
             

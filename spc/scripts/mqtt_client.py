@@ -253,7 +253,7 @@ class SPC_MQTT_Client:
         self.connected = None
 
         self.host = self.config.get("mqtt", "host")
-        self.port = self.config.getint("mqtt", "port")
+        self.port = self.config.get("mqtt", "port")
         self.username = self.config.get("mqtt", "username")
         self.password = self.config.get("mqtt", "password")
 

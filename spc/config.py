@@ -1,14 +1,14 @@
-import configparser
 import os
 from .utils import run_command
 from .logger import Logger
 from .ha_api import HA_API
+import json
 
 log = Logger(script_name="config")
 
 class Config:
-    default_config_file = "/opt/spc/config"
-    default_ha_config_file = "/data/config" # home assistant addon config file
+    default_config_file = "/opt/spc/config.json"
+    default_ha_config_file = "/data/config.json" # home assistant addon config file
     default_values = {
         "auto": {
             "reflash_interval": 1,
@@ -49,7 +49,7 @@ class Config:
             else:
                 config_file = self.default_config_file
         self.config_file = config_file
-        self.config = configparser.ConfigParser()
+        
         if not os.path.exists(config_file):
             print('Configuration file does not exist, recreating ...')
             # create config_file
@@ -63,53 +63,35 @@ class Config:
             if status != 0:
                 print('create config_file failed:\n%s' % result)
                 raise Exception(result)
+        with open(self.config_file, 'r') as f:
+            self.config = json.load(f)
 
-        self.config.read(config_file)
+    def save(self):
+        with open(self.config_file, 'w') as f:
+            json.dump(self.config, f)
 
     def get(self, section, key, default=None):
-        self.config.read(self.config_file)
-
-        if default is None:
-            default = self.default_values.get(section, {}).get(key, None)
-        try:
-            return self.config.get(section, key)
-        except configparser.NoSectionError:
+        edited = False
+        if section not in self.config:
             self.config[section] = {}
-            self.set(section, key, default)
-            log(f'NoSectionError: {section} {key} {default}', level='DEBUG')
-            return default
-        except configparser.NoOptionError:
-            self.set(section, key, default)
-            log(f'NoOptionError: {section} {key} {default}', level='DEBUG')
-            return default
+            edited = True
+            log(f"Section {section} not found in config file, adding ...")
+        if key not in self.config[section]:
+            self.config[section][key] = default
+            edited = True
+            log(f"Key {key} not found in section {section}, adding ...")
+        if edited:
+            self.save()
 
-    def getboolean(self, section, key, default=None):
-        result = self.get(section, key, default)
-        if result == 'True':
-            return True
-        elif result == 'False':
-            return False
-        else:
-            return result
-
-    def getint(self, section, key, default=None):
-        result = self.get(section, key, default)
-        try:
-            return int(result)
-        except ValueError:
-            return result
-
-    def getfloat(self, section, key, default=None):
-        result = self.get(section, key, default)
-        try:
-            return float(result)
-        except ValueError:
-            return result
+        return self.config[section][key]
 
     def set(self, section, key, value):
-        self.config[section][key] = str(value)
-        with open(self.config_file, 'w') as f:
-            self.config.write(f)
+        if section not in self.config:
+            self.config[section] = {}
+            log(f"Section {section} not found in config file, adding ...")
+        self.config[section][key] = value
+        self.save()
+        return value
 
     def get_all(self):
-        return {s:dict(self.config.items(s)) for s in self.config.sections()}
+        return self.config

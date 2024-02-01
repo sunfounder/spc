@@ -23,7 +23,7 @@ class Config:
             "rgb_speed": 50,
             "rgb_pwm_frequency": 1000,
             "rgb_pin": 10,  # 10, 12, 21
-            "shutdown_battery_pct": 25,
+            "shutdown_battery_pct": 30,
         },
         "mqtt": {
             "host": "core-mosquitto",

@@ -13,7 +13,7 @@ def get_cpu_temperature():
         temp = int(subprocess.check_output(cmd,shell=True).decode())
         return round(temp/1000, 2)
     except Exception as e:
-        log(f'get_cpu_temperature error: {e}', level='ERROR')
+        log.error(f'get_cpu_temperature error: {e}')
         return 0.0
 
 # Return RAM information (unit=kb) in a list
@@ -35,7 +35,7 @@ Deprecated, high CPU usage when running top -bn1 in bookworm.
 #         CPU_usage = subprocess.check_output(cmd,shell=True).decode().replace(',', '.')
 #         CPU_usage = round(100 - float(CPU_usage),1)
 #     # except Exception as e:
-#     #     log(f'get_cpu_usage error: {e}', level='ERROR')
+#     #     log.error(f'get_cpu_usage error: {e}')
 #     #     return 0.0
 #     except:
 #         CPU_usage = 0.0

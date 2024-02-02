@@ -1,4 +1,3 @@
-import sys
 
 def run_command(cmd):
     import subprocess

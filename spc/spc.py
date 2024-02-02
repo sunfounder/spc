@@ -3,7 +3,7 @@ from .i2c import I2C
 import struct
 from .config import Config
 from .logger import Logger
-from .system_status import get_cpu_temperature
+from . import system_status
 from .devices import Devices
 import sys
 import time
@@ -11,6 +11,7 @@ import time
 # init log
 # =================================================================
 log = Logger("SPC")
+system_status.log = log
 
 # class SPC()
 # =================================================================
@@ -87,7 +88,9 @@ class SPC():
         'fan_speed': (0, 1),
     }
 
-    def __init__(self, address=I2C_ADDRESS):
+    def __init__(self, address=I2C_ADDRESS, log=None):
+        if log is None:
+            self.log = log
         self.addr = address
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
@@ -95,7 +98,7 @@ class SPC():
 
         id = self._read_data('board_id')
         self.device = Devices(id)
-        log(f'SPC detect device: {self.device.name} ({self.device.id})')
+        self.log.info(f'SPC detect device: {self.device.name} ({self.device.id})')
         self.config = Config()
         self.fan_mode = self.config.get('auto', 'fan_mode')
         self.fan_state = self.config.get('auto', 'fan_state')
@@ -233,7 +236,7 @@ class SPC():
         data['board_name'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
         data['is_plugged_in'] = data['is_plugged_in'] == 1
-        data['cpu_temperature'] = get_cpu_temperature()
+        data['cpu_temperature'] = system_status.get_cpu_temperature()
         data['fan_mode'] = self.read_fan_mode()
         data['fan_state'] = self.read_fan_state()
         data['shutdown_battery_pct'] = self.shutdown_battery_pct

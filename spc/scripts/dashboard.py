@@ -9,20 +9,18 @@ import json
 
 from spc.config import Config
 from spc.logger import Logger
-from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 
 from urllib.parse import urlparse, parse_qs
-from os import system as run_command
 
 log = Logger('DASHBOARD')
 LOG_PATH = '/opt/spc/log/'
 STATIC_URL = '/opt/spc/www/'
 COMMAND_PATH = '/opt/spc/spc_service'
 
-spc = SPC()
-ha = HA_API()
-db = Database()
-config = Config()
+spc = SPC(log=log)
+ha = HA_API(log=log)
+db = Database(log=log)
+config = Config(log=log)
 
 DEBUG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
@@ -204,16 +202,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "error": result[1]
                 }
                 status = True
-        elif command == 'get-all':
-            data = spc.read_all()
-            data['cpu'] = get_cpu_info()
-            data['memory'] = get_memory_info()
-            data['disk'] = get_disks_info()
-            data['network'] = get_network_info()
-            data['boot_time'] = get_boot_time()
-            if ha.is_homeassistant_addon():
-                data['network']["type"] = ha.get_network_connection_type()
-            status = True
         elif command == 'get-config':
             status = True
             data = config.get_all()
@@ -224,6 +212,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 n = int(param['n'][0])
             status = True
             data = db.get('history', n=n)
+            # print(data)
         elif command == "get-time-range":
             if 'start' not in param or 'end' not in param:
                 status = False

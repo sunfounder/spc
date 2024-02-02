@@ -8,9 +8,9 @@ from spc.config import Config
 import time
 
 log = Logger('DATA_LOGGER')
-spc = SPC()
-db = Database()
-config = Config()
+spc = SPC(log=log)
+db = Database(log=log)
+config = Config(log=log)
 
 INTERVAL = config.get('data-logger', 'interval', default=1)
 

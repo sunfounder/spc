@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import sys
 import time
 
 from argparse import ArgumentParser
@@ -21,7 +20,7 @@ log = Logger("AUTO")
 
 # config
 # =================================================================
-config = Config()
+config = Config(log=log)
 
 # Argument Parser
 # =================================================================
@@ -63,7 +62,7 @@ def handle_param_change():
         config.set("auto", param, new_value)
         if param == "rgb_pin":
             log(f"change rgb pin to {new_value}", level="INFO")
-            config_txt = ConfigTxt()
+            config_txt = ConfigTxt(log=log)
             if not config_txt.isready():
                 continue
             if new_value == 10:
@@ -81,12 +80,12 @@ def handle_param_change():
 
 # spc
 # =================================================================
-spc = SPC()
+spc = SPC(log=log)
 data = None
 
 # init HA
 # =================================================================
-ha = HA_API()
+ha = HA_API(log=log)
 
 # fan auto control
 # =================================================================
@@ -191,7 +190,7 @@ def fan_auto_control(data):
 has_oled = False
 if 'oled' in spc.device.peripherals:
     try:
-        oled = OLED() # if init failed, oled == None
+        oled = OLED(log=log) # if init failed, oled == None
         if oled is not None:
             log('oled init success')
     except Exception as e:
@@ -308,7 +307,7 @@ rgb = None
 if 'ws2812' in spc.device.peripherals:
     try:
         rgb = WS2812(LED_COUNT=16, LED_PIN=args.rgb_pin,
-            LED_FREQ_HZ=args.rgb_pwm_frequency*1000)
+            LED_FREQ_HZ=args.rgb_pwm_frequency*1000, log=log)
         log('ws2812 init success')
     except Exception as e:
         log(f"ws2812 init failed: {e}")

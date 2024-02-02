@@ -7,7 +7,9 @@ log = Logger('HA_API')
 
 class HA_API:
 
-    def __init__(self, url="http://supervisor/"):
+    def __init__(self, url="http://supervisor/", log=None):
+        if log is None:
+            self.log = log
         if not self.is_homeassistant_addon():
             log(msg="Not home assistant addon, skip init", level='DEBUG')
             return
@@ -28,14 +30,14 @@ class HA_API:
             r = requests.get(url, headers=self.headers)
             return r.json()
         except Exception as e:
-            log(msg="home assistant get error: " + e, level='DEBUG')
+            self.log.warning(msg="home assistant get error: " + e)
 
     def set(self, endpoint, data=None):
         try:
             url = f"{self.url}{endpoint}"
             requests.post(url, headers=self.headers)
         except Exception as e:
-            log(msg="home assistant get error: " + e, level='DEBUG')
+            self.log.warning(msg="home assistant get error: " + e)
 
     def get_ip(self):
         IPs = {}
@@ -69,6 +71,6 @@ class HA_API:
 
     def shutdown(self):
         '''shutdown homeassistant host'''
-        log(msg="Shutdown home assistant host", level='DEBUG')
+        self.log.info(msg="Shutdown home assistant host")
         self.set("host/shutdown")
 

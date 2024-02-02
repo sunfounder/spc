@@ -245,11 +245,11 @@ class SPC_MQTT_Client:
 
 
     def __init__(self):
-        self.config = Config()
-        self.spc = SPC()
+        self.config = Config(log=log)
+        self.spc = SPC(log=log)
         name = self.spc.device.name
         self.mqtt_client = MQTT_Client(node_name=name)
-        self.db = Database()
+        self.db = Database(log=log)
         self.connected = None
 
         self.host = self.config.get("mqtt", "host")

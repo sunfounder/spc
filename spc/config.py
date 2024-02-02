@@ -42,7 +42,9 @@ class Config:
         }
     }
 
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None, log=None):
+        if log is None:
+            self.log = log
         if config_file is None:
             if HA_API.is_homeassistant_addon():
                 config_file = self.default_ha_config_file
@@ -75,11 +77,11 @@ class Config:
         if section not in self.config:
             self.config[section] = {}
             edited = True
-            log(f"Section {section} not found in config file, adding ...")
+            self.log(f"Section {section} not found in config file, adding ...")
         if key not in self.config[section]:
             self.config[section][key] = default
             edited = True
-            log(f"Key {key} not found in section {section}, adding ...")
+            self.log(f"Key {key} not found in section {section}, adding ...")
         if edited:
             self.save()
 
@@ -88,7 +90,7 @@ class Config:
     def set(self, section, key, value):
         if section not in self.config:
             self.config[section] = {}
-            log(f"Section {section} not found in config file, adding ...")
+            self.log(f"Section {section} not found in config file, adding ...")
         self.config[section][key] = value
         self.save()
         return value

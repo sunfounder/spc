@@ -29,8 +29,11 @@ class WS2812():
                 LED_BRIGHTNESS=255,
                 LED_FREQ_HZ=1000000,
                 LED_DMA=10,
-                LED_INVERT=False, log=Logger(__name__)):
-        self.log = log
+                LED_INVERT=False, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         self.led_count = LED_COUNT
         self.led_pin = LED_PIN
         self.led_brightness = LED_BRIGHTNESS

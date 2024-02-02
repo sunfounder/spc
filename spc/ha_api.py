@@ -5,8 +5,11 @@ import os
 
 class HA_API:
 
-    def __init__(self, url="http://supervisor/", log=Logger(__name__)):
-        self.log = log
+    def __init__(self, url="http://supervisor/", log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         if not self.is_homeassistant_addon():
             log(msg="Not home assistant addon, skip init", level='DEBUG')
             return

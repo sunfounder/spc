@@ -40,8 +40,11 @@ class Config:
         }
     }
 
-    def __init__(self, config_file=None, log=Logger(__name__)):
-        self.log = log
+    def __init__(self, config_file=None, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         if config_file is None:
             if HA_API.is_homeassistant_addon():
                 config_file = self.default_ha_config_file
@@ -62,6 +65,9 @@ class Config:
             if status != 0:
                 print('create config_file failed:\n%s' % result)
                 raise Exception(result)
+        self.reload()
+
+    def reload(self):
         with open(self.config_file, 'r') as f:
             self.config = json.load(f)
 

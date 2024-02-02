@@ -5,8 +5,11 @@ import json
 from .logger import Logger
 
 class Database:
-    def __init__(self, log=Logger(__name__)):
-        self.log = log
+    def __init__(self, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         self.client = InfluxDBClient(host='localhost', port=8086)
         self.database = 'spc'
 

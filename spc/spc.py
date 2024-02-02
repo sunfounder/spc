@@ -83,8 +83,11 @@ class SPC():
         'fan_speed': (0, 1),
     }
 
-    def __init__(self, address=I2C_ADDRESS, log=Logger(__name__)):
-        self.log = log
+    def __init__(self, address=I2C_ADDRESS, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         system_status.log = log
         self.addr = address
         self.i2c = I2C(self.addr)
@@ -94,7 +97,7 @@ class SPC():
         id = self._read_data('board_id')
         self.device = Devices(id)
         self.log.info(f'SPC detect device: {self.device.name} ({self.device.id})')
-        self.config = Config()
+        self.config = Config(log=log)
         self.fan_mode = self.config.get('auto', 'fan_mode')
         self.fan_state = self.config.get('auto', 'fan_state')
         self.fan_speed = self.config.get('auto', 'fan_speed')
@@ -207,7 +210,7 @@ class SPC():
 
     def read_shutdown_battery_pct(self) -> int:
         try:
-            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=30))
+            self.shutdown_battery_pct= self.config.get('auto', 'shutdown_battery_pct', default=30)
             if self.shutdown_battery_pct <= self.SHUTDOWM_BATTERY_MIN:
                 self.shutdown_battery_pct = self.SHUTDOWM_BATTERY_MIN
                 self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
@@ -215,7 +218,7 @@ class SPC():
                 self.shutdown_battery_pct = 100
                 self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
         except:
-            self.shutdown_battery_pct = 100
+            self.shutdown_battery_pct = 30
             self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
 
         return self.shutdown_battery_pct

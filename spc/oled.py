@@ -275,8 +275,11 @@ class SSD1306_96_16(SSD1306_I2C):
 
 
 class OLED(object):
-    def __init__(self, log=Logger(__name__)):
-        self.log = log
+    def __init__(self, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         addresses = self.check_oled()
         if len(addresses) == 0:
             self.log.warning("No OLED found")

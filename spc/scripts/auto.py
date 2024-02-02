@@ -13,14 +13,14 @@ from spc.system_status import get_cpu_usage, get_ram_info, get_disk_space, get_i
 from spc.ha_api import HA_API
 from spc.ws2812 import WS2812, RGB_styles
 from spc.configtxt import ConfigTxt
+from spc.database import Database
 
-# log 
-# =================================================================
+
 log = Logger("AUTO")
-
-# config
-# =================================================================
+db = Database(log=log)
 config = Config(log=log)
+spc = SPC(log=log)
+ha = HA_API(log=log)
 
 # Argument Parser
 # =================================================================
@@ -78,14 +78,7 @@ def handle_param_change():
                 config_txt.comment("dtoverlay=i2s-mmap")
             need_reboot = True
 
-# spc
-# =================================================================
-spc = SPC(log=log)
 data = None
-
-# init HA
-# =================================================================
-ha = HA_API(log=log)
 
 # fan auto control
 # =================================================================
@@ -127,9 +120,10 @@ def fan_auto_control(data):
         return
 
     # read fan_state from config file
-    _fan_state = config.get("auto", "fan_state")
+    # fan_state = config.get("auto", "fan_state")
+    fan_state = db.get("config", "fan_state")
     # if the fan is off
-    if _fan_state is False:
+    if fan_state is False:
         if last_fan_speed is None or last_fan_speed != fan_speed:
             last_fan_speed = fan_speed
             spc.set_fan_speed(0)
@@ -138,14 +132,15 @@ def fan_auto_control(data):
 
     # if the fan is on, and fan_mode is auto, adjust fan speed based on  CPU temperature
     # read fan_mode from config file
-    _fan_mode = config.get('auto', 'fan_mode')
+    # _fan_mode = config.get('auto', 'fan_mode')
+    fan_mode = db.get("config", "fan_mode")
     # if fan_mode is not auto
-    if _fan_mode != 'auto':
-        if _fan_mode == 'quiet':
+    if fan_mode != 'auto':
+        if fan_mode == 'quiet':
             fan_speed = 40
-        elif _fan_mode == 'normal':
+        elif fan_mode == 'normal':
             fan_speed = 70
-        elif _fan_mode == 'performance':
+        elif fan_mode == 'performance':
             fan_speed = 100
         #
         if last_fan_speed != fan_speed:
@@ -353,10 +348,14 @@ def rgb_control(data):
         return
 
     # read rgb config from file
-    _rgb_switch = config.get("auto", "rgb_switch", default=False)
-    _rgb_style = config.get("auto", "rgb_style")
-    _rgb_color = config.get("auto", "rgb_color")
-    _rgb_speed = config.get("auto", "rgb_speed")
+    # _rgb_switch = config.get("auto", "rgb_switch", default=False)
+    # _rgb_style = config.get("auto", "rgb_style")
+    # _rgb_color = config.get("auto", "rgb_color")
+    # _rgb_speed = config.get("auto", "rgb_speed")
+    _rgb_switch = db.get("config", "rgb_switch", default=False)
+    _rgb_style = db.get("config", "rgb_style")
+    _rgb_color = db.get("config", "rgb_color")
+    _rgb_speed = db.get("config", "rgb_speed")
     # if change
     if (_rgb_switch != rgb_swtich or \
         _rgb_style != rgb_style or \
@@ -430,10 +429,11 @@ def external_unplugged_handler(data):
         else:
             log(f"External input unplugged", level="INFO")
     if is_plugged_in == False:
-        _shutdown_pct = spc.read_shutdown_battery_pct()
-        _current_pct= data['battery_percentage']
-        if _current_pct < _shutdown_pct:
-            log(f"Battery is below {_shutdown_pct}, shutdown!", level="INFO")
+        shutdown_pct = db.get("config", "shutdown_battery_pct")
+        # shutdown_pct = spc.read_shutdown_battery_pct()
+        current_pct= data['battery_percentage']
+        if current_pct < shutdown_pct:
+            log(f"Battery is below {shutdown_pct}, shutdown!", level="INFO")
             # TODO: Handler before ending
             os.system("sudo poweroff")
             time.sleep(1)

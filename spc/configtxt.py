@@ -10,8 +10,11 @@ class ConfigTxt(object):
     DEFAULT_FILE_1 = "/boot/config.txt"  # Raspberry Pi OS
     DEFAULT_FILE_2 = "/boot/firmware/config.txt"  # Ubuntu
 
-    def __init__(self, file=None, log=Logger(__name__)):
-        self.log = log
+    def __init__(self, file=None, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         # check if file exists
         self.__isready = True
         if file is None:

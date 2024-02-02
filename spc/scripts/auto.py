@@ -121,7 +121,7 @@ def fan_auto_control(data):
 
     # read fan_state from config file
     # fan_state = config.get("auto", "fan_state")
-    fan_state = db.get("config", "fan_state")
+    fan_state = db.get("config", "auto_fan_state")
     # if the fan is off
     if fan_state is False:
         if last_fan_speed is None or last_fan_speed != fan_speed:
@@ -133,7 +133,7 @@ def fan_auto_control(data):
     # if the fan is on, and fan_mode is auto, adjust fan speed based on  CPU temperature
     # read fan_mode from config file
     # _fan_mode = config.get('auto', 'fan_mode')
-    fan_mode = db.get("config", "fan_mode")
+    fan_mode = db.get("config", "auto_fan_mode")
     # if fan_mode is not auto
     if fan_mode != 'auto':
         if fan_mode == 'quiet':
@@ -352,10 +352,10 @@ def rgb_control(data):
     # _rgb_style = config.get("auto", "rgb_style")
     # _rgb_color = config.get("auto", "rgb_color")
     # _rgb_speed = config.get("auto", "rgb_speed")
-    _rgb_switch = db.get("config", "rgb_switch", default=False)
-    _rgb_style = db.get("config", "rgb_style")
-    _rgb_color = db.get("config", "rgb_color")
-    _rgb_speed = db.get("config", "rgb_speed")
+    _rgb_switch = db.get("config", "auto_rgb_switch", default=False)
+    _rgb_style = db.get("config", "auto_rgb_style")
+    _rgb_color = db.get("config", "auto_rgb_color")
+    _rgb_speed = db.get("config", "auto_rgb_speed")
     # if change
     if (_rgb_switch != rgb_swtich or \
         _rgb_style != rgb_style or \
@@ -429,7 +429,7 @@ def external_unplugged_handler(data):
         else:
             log(f"External input unplugged", level="INFO")
     if is_plugged_in == False:
-        shutdown_pct = db.get("config", "shutdown_battery_pct")
+        shutdown_pct = db.get("config", "auto_shutdown_battery_pct")
         # shutdown_pct = spc.read_shutdown_battery_pct()
         current_pct= data['battery_percentage']
         if current_pct < shutdown_pct:

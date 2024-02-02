@@ -3,8 +3,6 @@ import random
 from rpi_ws281x import PixelStrip, Color # https://github.com/jgarff/rpi_ws281x
 from .logger import Logger
 
-log = Logger('WS2812')
-
 # LED strip configuration:
 # LED_COUNT      = 16      # Number of LED pixels.
 # LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
@@ -31,9 +29,8 @@ class WS2812():
                 LED_BRIGHTNESS=255,
                 LED_FREQ_HZ=1000000,
                 LED_DMA=10,
-                LED_INVERT=False, log=None):
-        if log is None:
-            self.log = log
+                LED_INVERT=False, log=Logger(__name__)):
+        self.log = log
         self.led_count = LED_COUNT
         self.led_pin = LED_PIN
         self.led_brightness = LED_BRIGHTNESS

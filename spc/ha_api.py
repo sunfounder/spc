@@ -3,13 +3,10 @@ import requests
 from .logger import Logger
 import os
 
-log = Logger('HA_API')
-
 class HA_API:
 
-    def __init__(self, url="http://supervisor/", log=None):
-        if log is None:
-            self.log = log
+    def __init__(self, url="http://supervisor/", log=Logger(__name__)):
+        self.log = log
         if not self.is_homeassistant_addon():
             log(msg="Not home assistant addon, skip init", level='DEBUG')
             return

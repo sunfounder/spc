@@ -4,8 +4,6 @@ from .logger import Logger
 from .ha_api import HA_API
 import json
 
-log = Logger(script_name="config")
-
 class Config:
     default_config_file = "/opt/spc/config.json"
     default_ha_config_file = "/data/config.json" # home assistant addon config file
@@ -42,9 +40,8 @@ class Config:
         }
     }
 
-    def __init__(self, config_file=None, log=None):
-        if log is None:
-            self.log = log
+    def __init__(self, config_file=None, log=Logger(__name__)):
+        self.log = log
         if config_file is None:
             if HA_API.is_homeassistant_addon():
                 config_file = self.default_ha_config_file

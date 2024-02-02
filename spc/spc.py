@@ -8,11 +8,6 @@ from .devices import Devices
 import sys
 import time
 
-# init log
-# =================================================================
-log = Logger("SPC")
-system_status.log = log
-
 # class SPC()
 # =================================================================
 class SPC():
@@ -88,9 +83,9 @@ class SPC():
         'fan_speed': (0, 1),
     }
 
-    def __init__(self, address=I2C_ADDRESS, log=None):
-        if log is None:
-            self.log = log
+    def __init__(self, address=I2C_ADDRESS, log=Logger(__name__)):
+        self.log = log
+        system_status.log = log
         self.addr = address
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():

@@ -38,9 +38,11 @@ class Database:
         result = self.client.query(query)
         return list(result.get_points())
 
-    def if_too_many_nulls(self, result, threshold):
+    def if_too_many_nulls(self, result, threshold=0.3):
         for point in result:
-            if len([key for key, value in point.items() if value is None]) > threshold:
+            error_length = len([key for key, value in point.items() if value is None])
+            error_ratio = error_length / len(point)
+            if error_ratio > threshold:
                 return True
         return False
 
@@ -48,7 +50,7 @@ class Database:
         for _ in range(3):
             query = f"SELECT {key} FROM {measurement} ORDER BY time DESC LIMIT {n}"
             result = self.client.query(query)
-            if self.if_too_many_nulls(list(result.get_points()), 3):
+            if self.if_too_many_nulls(list(result.get_points())):
                 self.log(f"Too many nulls in the result of query: {query}, trying again...", level='WARNING')
                 continue
             break

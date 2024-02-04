@@ -258,18 +258,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                             else:
                                 check = False
                         log_level = DEBUG_LEVELS.index(level)
-                        current_log_level = get_log_level(line)
+                        current_log_level = DEBUG_LEVELS.index(get_log_level(line))
                         if current_log_level < log_level:
                             check = False
                         if check:
                             data.append(line)
                 status = True
-                try:
-                    with open(f"{LOG_PATH}{log_file}", 'r') as f:
-                        data = f.read()
-                except FileNotFoundError:
-                    status = False
-                    error = f"ERROR, file not found"
         else:
             status = False
             error = f"Command not found {command}"

@@ -231,7 +231,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif command == "get-log":
             if 'log' not in param:
                 status = False
-                error = "ERROR, file not found"
+                error = "ERROR, file not specified"
             else:
                 log_file = param['log'][0]
                 n = 100
@@ -282,8 +282,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         data = payload['data']
         if command == 'set-fan-mode':
             spc.set_fan_mode(data)
+            db.set('config', {'auto_fan_mode': data})
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
+            db.set('config', {'auto_fan_state': data})
         elif command == 'set-config':
             db_config = {}
             print(data)

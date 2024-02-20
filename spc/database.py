@@ -34,7 +34,8 @@ class Database:
             return False, json.loads(e.content)["error"]
 
     def get_data_by_time_range(self, measurement, start_time, end_time, key="*"):
-        query = f"SELECT {key} FROM {measurement} WHERE time >= '{start_time}' AND time <= '{end_time}'"
+        query = f"SELECT {key} FROM {measurement} WHERE time >= {start_time} AND time <= {end_time}"
+        print(query)
         result = self.client.query(query)
         return list(result.get_points())
 
@@ -59,7 +60,9 @@ class Database:
         if n == 1:
             if len(list(result.get_points())) == 0:
                 return None
-            return list(result.get_points())[0][key]
+            if key != "*" and key != "time" and "," not in key:
+                return list(result.get_points())[0][key]
+            return list(result.get_points())[0]
         
         return list(result.get_points())
 

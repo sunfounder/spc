@@ -75,7 +75,9 @@ class Config:
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f)
 
-    def get(self, section, key, default=None):
+    def get(self, section, key, default=None, reload=True):
+        if reload:
+            self.reload()
         edited = False
         if section not in self.config:
             self.config[section] = {}

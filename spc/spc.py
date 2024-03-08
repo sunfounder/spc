@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 from .i2c import I2C
 import struct
-from .config import Config
-from .logger import Logger
-from . import system_status
 from .devices import Devices
 import sys
 import time
@@ -17,10 +14,18 @@ class SPC():
     EXTERNAL_INPUT = 0
     BATTERY = 1
 
+    SHUTDOWN_REQUEST_NONE = 0
+    SHUTDOWN_REQUEST_LOW_BATTERY = 1
+    SHUTDOWN_REQUEST_BUTTON = 2
+    SHUTDOWN_REQUESTS = [
+        SHUTDOWN_REQUEST_LOW_BATTERY,
+        SHUTDOWN_REQUEST_BUTTON,
+    ]
+
     SHUTDOWM_BATTERY_MIN = 10
 
-    data_format = '>BHHhHhHhBHBBBBB'
-    total_length = 23
+    data_format = '>BHHhHhHhBHBBBBBB'
+    total_length = 24
     data_map = {
         'board_id': (0, 1, 'B'),  # data start index, data length, format
         'vcc_voltage': (1, 2, '>H'),
@@ -36,8 +41,9 @@ class SPC():
         'power_source': (18, 1, 'B'),
         'is_plugged_in': (19, 1, 'B'),
         'is_charging': (20, 1, 'B'),
-        'fan_speed': (21, 1, 'B'),
+        'fan_power': (21, 1, 'B'),
         'shutdown_request': (22, 1, 'B'),
+        'shutdown_battery_pct': (23, 1, 'B'),
         #
         # must be continuous in read_all()
     }
@@ -50,9 +56,8 @@ class SPC():
         'board_id',
         'board_name',
         'shutdown_request',
-        'cpu_temperature',
     ]
-    peripheral_data = {
+    PERIPHERAL_DATA_MAP = {
         'battery': [
             'battery_voltage',
             'battery_current',
@@ -71,40 +76,37 @@ class SPC():
             'raspberry_pi_current',
         ],
         'fan': [
-            'fan_speed',
-            'fan_mode',
-            'fan_state',
+            'fan_power',
         ],
         'power_source_sensor': [
             'power_source',
         ]
     }
     control_map = {
-        'fan_speed': (0, 1),
+        'fan_power': (0, 1),
+        'shutdown_battery_pct': (1, 1),
     }
 
-    def __init__(self, address=I2C_ADDRESS, log=None):
-        if log is None:
-            self.log = Logger(__name__)
-        else:
-            self.log = log
-        system_status.log = log
+    def __init__(self, address=I2C_ADDRESS, get_logger=None):
+        if get_logger is None:
+            import logging
+            get_logger = logging.getLogger
+        self.log = get_logger(__name__)
+
         self.addr = address
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
-            raise IOError(f'SPC init error: I2C device not found at address 0x{self.addr:02X}')
+            self.log.error(f'SPC init error: I2C device not found at address 0x{self.addr:02X}')
+            self._is_ready = False
+            return
 
         id = self._read_data('board_id')
         self.device = Devices(id)
         self.log.info(f'SPC detect device: {self.device.name} ({self.device.id})')
-        self.config = Config(log=log)
-        self.fan_mode = self.config.get('auto', 'fan_mode')
-        self.fan_state = self.config.get('auto', 'fan_state')
-        self.fan_speed = self.config.get('auto', 'fan_speed')
-        if self.fan_state:
-            self.set_fan_speed(self.fan_speed)
-        # shutdown_battery_pct
-        self.read_shutdown_battery_pct()
+        self._is_ready = True
+
+    def is_ready(self):
+        return self._is_ready
 
     def _read(self, start, length):
         _retry = 5
@@ -188,17 +190,9 @@ class SPC():
         result = self._read_data('battery_percentage')
         return int(result)
 
-    def read_fan_speed(self) -> int:
-        result = self._read_data('fan_speed')
+    def read_fan_power(self) -> int:
+        result = self._read_data('fan_power')
         return int(result)
-
-    def read_fan_mode(self) -> str:
-        self.fan_mode = self.config.get('auto', 'fan_mode')
-        return self.fan_mode
-
-    def read_fan_state(self) -> str:
-        self.fan_state = self.config.get('auto', 'fan_state')
-        return self.fan_state
 
     def read_board_id(self) -> int:
         result = self._read_data('board_id')
@@ -209,20 +203,8 @@ class SPC():
         return int(result)
 
     def read_shutdown_battery_pct(self) -> int:
-        try:
-            self.shutdown_battery_pct= self.config.get('auto', 'shutdown_battery_pct', default=30)
-            if self.shutdown_battery_pct <= self.SHUTDOWM_BATTERY_MIN:
-                self.shutdown_battery_pct = self.SHUTDOWM_BATTERY_MIN
-                self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
-            elif self.shutdown_battery_pct > 100:
-                self.shutdown_battery_pct = 100
-                self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
-        except:
-            self.shutdown_battery_pct = 30
-            self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
-
-        return self.shutdown_battery_pct
-
+        result = self._read_data('shutdown_battery_pct')
+        return int(result)
     
     def _read_all(self) -> dict:
         result = self._read(0, self.total_length)
@@ -234,10 +216,6 @@ class SPC():
         data['board_name'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
         data['is_plugged_in'] = data['is_plugged_in'] == 1
-        data['cpu_temperature'] = system_status.get_cpu_temperature()
-        data['fan_mode'] = self.read_fan_mode()
-        data['fan_state'] = self.read_fan_state()
-        data['shutdown_battery_pct'] = self.shutdown_battery_pct
         return data
 
     def read_all(self) -> dict:
@@ -246,52 +224,29 @@ class SPC():
         for data_name in self.basic_data:
             data[data_name] = all_data[data_name]
         for peripheral in self.device.peripherals:
-            if peripheral not in self.peripheral_data:
+            if peripheral not in self.PERIPHERAL_DATA_MAP:
                 continue
-            for data_name in self.peripheral_data[peripheral]:
+            for data_name in self.PERIPHERAL_DATA_MAP[peripheral]:
                 data[data_name] = all_data[data_name]
         return data
 
-    def set_fan_speed(self, speed):
-        _start, _len = self.control_map['fan_speed']
-        if speed <= 0:
-            speed = 0
-            self._write(_start, [0])
-            return  # do not config
-        elif speed > 100:
-            speed = 100
+    def set_fan_power(self, power):
+        _start, _len = self.control_map['fan_power']
+        if power <= 0:
+            power = 0
+        elif power > 100:
+            power = 100
 
-        self.fan_speed = speed
-        self.config.set('auto', 'fan_speed', self.fan_speed)
-        self._write(_start, [speed])
+        self._write(_start, [power])
 
-    def set_fan_state(self, switch: bool):
-        self.fan_state = switch
-        self.config.set('auto', 'fan_state', self.fan_state)
-        if switch:
-            self.set_fan_speed(self.fan_speed)
-        else:
-            self.set_fan_speed(0)
-
-    def set_fan_mode(self, mode: str):
-        if mode == 'quiet':
-            self.set_fan_speed(40)
-        elif mode == 'normal':
-            self.set_fan_speed(70)
-        elif mode == 'performance':
-            self.set_fan_speed(100)
-
-        self.fan_mode = mode
-        self.config.set('auto', 'fan_mode', mode)
-
-    def set_shutdown_battery_pct(self, precentage):
+    def set_shutdown_battery_pct(self, percentage):
+        _start, _len = self.control_map['shutdown_battery_pct']
         if percentage <= self.SHUTDOWM_BATTERY_MIN:
             percentage = self.SHUTDOWM_BATTERY_MIN
         elif percentage > 100:
             percentage = 100
 
-        self.shutdown_battery_pct = precentage
-        self.config.set('auto', 'shutdown_battery_pct', precentage)
+        self._write(_start, [percentage])
 
     def set_rtc(self, date:list):
         '''

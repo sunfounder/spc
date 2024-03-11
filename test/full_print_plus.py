@@ -1,13 +1,39 @@
 #!/usr/bin/env python3
 from spc.spc import SPC
 import time
+import struct
 
 spc = SPC()
 
 LEFT_STR_MAX_LEN = 26
 RIGHT_STR_MAX_LEN = 20
 
+last_volt = 0
+last_cur = 0
+
+def read_bat_ir():
+    result = spc.i2c.read_block_data(34, 2)
+    result = struct.unpack('>H', bytes(result))
+    return result[0]
+
+def read_real_volt():
+    result = spc.i2c.read_block_data(36, 2)
+    result = struct.unpack('>H', bytes(result))
+    return result[0]
+
+def read_volt_err():
+    result = spc.i2c.read_block_data(38, 2)
+    result = struct.unpack('>H', bytes(result))
+    return result[0]
+
+def read_cur_err():
+    result = spc.i2c.read_block_data(40, 2)
+    result = struct.unpack('>H', bytes(result))
+    return result[0]
+
 def main():
+    global last_volt, last_cur
+    
     while True:
         # Read the data before clearing the screen，to retain the last data when an error occurs.
         data_buffer = spc.read_all()
@@ -34,7 +60,7 @@ def main():
         if ('battery'  in spc.device.peripherals):
             print(f"Charging:                 {'Charging' if data_buffer['is_charging'] else 'Not charging':<{RIGHT_STR_MAX_LEN}s}")
             print(f"Power source:             {'Battery' if data_buffer['power_source'] == spc.BATTERY else 'USB':<{RIGHT_STR_MAX_LEN}s}")
-            print(f"USB plugged in:           {'Plugged in' if data_buffer['is_usb_plugged_in'] else 'Unplugged':<{RIGHT_STR_MAX_LEN}s}")
+            print(f"USB plugged in:           {'Plugged in' if data_buffer['is_plugged_in'] else 'Unplugged':<{RIGHT_STR_MAX_LEN}s}")
         if ('fan'  in spc.device.peripherals):
             print(f"Fan speed:                {str(data_buffer['fan_speed'])+' %':<{RIGHT_STR_MAX_LEN}s}")
         
@@ -46,7 +72,23 @@ def main():
         rstflag = f'{spc.read_rstflag():08b}'
         print(f"{'RSTFLAG':<{LEFT_STR_MAX_LEN}s}{rstflag:<{RIGHT_STR_MAX_LEN}s}")
         
-        time.sleep(1)
+        Bat_IR = f'{read_bat_ir()} mOhm'
+        Real_Bat_volt = f'{read_real_volt()} mV'
+        print(f"{'Bat_IR':<{LEFT_STR_MAX_LEN}s}{Bat_IR:<{RIGHT_STR_MAX_LEN}s}")
+        print(f"{'Real_Bat_volt':<{LEFT_STR_MAX_LEN}s}{Real_Bat_volt:<{RIGHT_STR_MAX_LEN}s}")
+
+        ue = f'{read_volt_err()} mV'
+        ie = f'{read_cur_err()} mA'
+        print(f"{'volt_err':<{LEFT_STR_MAX_LEN}s}{ue:<{RIGHT_STR_MAX_LEN}s}")
+        print(f"{'cur_err':<{LEFT_STR_MAX_LEN}s}{ie:<{RIGHT_STR_MAX_LEN}s}")
+
+        # print(f"{'last_volt':<{LEFT_STR_MAX_LEN}s}{str(last_volt):<{RIGHT_STR_MAX_LEN}s}")
+        # print(f"{'last_cur':<{LEFT_STR_MAX_LEN}s}{str(last_cur):<{RIGHT_STR_MAX_LEN}s}")
+
+        # last_volt = data_buffer['battery_voltage']
+        # last_cur = data_buffer['battery_current']
+
+        time.sleep(.5)
 
 if __name__ == '__main__':
 

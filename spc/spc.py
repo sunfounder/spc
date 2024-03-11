@@ -3,14 +3,10 @@ from .i2c import I2C
 import struct
 from .config import Config
 from .logger import Logger
-from .system_status import get_cpu_temperature
+from . import system_status
 from .devices import Devices
 import sys
 import time
-
-# init log
-# =================================================================
-log = Logger("SPC")
 
 # class SPC()
 # =================================================================
@@ -87,7 +83,12 @@ class SPC():
         'fan_speed': (0, 1),
     }
 
-    def __init__(self, address=I2C_ADDRESS):
+    def __init__(self, address=I2C_ADDRESS, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
+        system_status.log = log
         self.addr = address
         self.i2c = I2C(self.addr)
         if not self.i2c.is_ready():
@@ -95,11 +96,11 @@ class SPC():
 
         id = self._read_data('board_id')
         self.device = Devices(id)
-        log(f'SPC detect device: {self.device.name} ({self.device.id})')
-        self.config = Config()
+        self.log.info(f'SPC detect device: {self.device.name} ({self.device.id})')
+        self.config = Config(log=log)
         self.fan_mode = self.config.get('auto', 'fan_mode')
-        self.fan_state = self.config.get('auto', 'fan_state') == 'True'
-        self.fan_speed = int(self.config.get('auto', 'fan_speed'))
+        self.fan_state = self.config.get('auto', 'fan_state')
+        self.fan_speed = self.config.get('auto', 'fan_speed')
         if self.fan_state:
             self.set_fan_speed(self.fan_speed)
         # shutdown_battery_pct
@@ -196,7 +197,7 @@ class SPC():
         return self.fan_mode
 
     def read_fan_state(self) -> str:
-        self.fan_state = self.config.get('auto', 'fan_state') == 'True'
+        self.fan_state = self.config.get('auto', 'fan_state')
         return self.fan_state
 
     def read_board_id(self) -> int:
@@ -209,7 +210,7 @@ class SPC():
 
     def read_shutdown_battery_pct(self) -> int:
         try:
-            self.shutdown_battery_pct= int(self.config.get('auto', 'shutdown_battery_pct', default=25))
+            self.shutdown_battery_pct= self.config.get('auto', 'shutdown_battery_pct', default=30)
             if self.shutdown_battery_pct <= self.SHUTDOWM_BATTERY_MIN:
                 self.shutdown_battery_pct = self.SHUTDOWM_BATTERY_MIN
                 self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
@@ -217,7 +218,7 @@ class SPC():
                 self.shutdown_battery_pct = 100
                 self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
         except:
-            self.shutdown_battery_pct = 100
+            self.shutdown_battery_pct = 30
             self.config.set('auto', 'shutdown_battery_pct', self.shutdown_battery_pct)
 
         return self.shutdown_battery_pct
@@ -233,7 +234,7 @@ class SPC():
         data['board_name'] = self.device.name
         data['is_charging'] = data['is_charging'] == 1
         data['is_plugged_in'] = data['is_plugged_in'] == 1
-        data['cpu_temperature'] = get_cpu_temperature()
+        data['cpu_temperature'] = system_status.get_cpu_temperature()
         data['fan_mode'] = self.read_fan_mode()
         data['fan_state'] = self.read_fan_state()
         data['shutdown_battery_pct'] = self.shutdown_battery_pct

@@ -8,11 +8,11 @@ from spc.config import Config
 import time
 
 log = Logger('DATA_LOGGER')
-spc = SPC()
-db = Database()
-config = Config()
+spc = SPC(log=log)
+db = Database(log=log)
+config = Config(log=log)
 
-INTERVAL = config.getint('data-logger', 'interval', default=1)
+INTERVAL = config.get('data-logger', 'interval', default=1)
 
 parser = argparse.ArgumentParser(description='spc-data-logger')
 parser.add_argument("--interval", default=INTERVAL, help="Set interval for data logger, in second")

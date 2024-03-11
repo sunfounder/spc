@@ -1,8 +1,6 @@
 import os
 from .logger import Logger
 
-log = Logger(script_name="configtxt")
-
 class ConfigTxt(object):
     '''
         To setup /boot/config.txt (Raspbian, Kali OSMC, etc)
@@ -12,7 +10,11 @@ class ConfigTxt(object):
     DEFAULT_FILE_1 = "/boot/config.txt"  # Raspberry Pi OS
     DEFAULT_FILE_2 = "/boot/firmware/config.txt"  # Ubuntu
 
-    def __init__(self, file=None):
+    def __init__(self, file=None, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         # check if file exists
         self.__isready = True
         if file is None:
@@ -21,13 +23,13 @@ class ConfigTxt(object):
             elif os.path.exists(self.DEFAULT_FILE_2):
                 self.file = self.DEFAULT_FILE_2
             else:
-                log("No config.txt file found.")
+                self.log("No config.txt file found.")
                 self.__isready = False
                 return
         else:
             self.file = file
             if not os.path.exists(file):
-                log(f"config.txt not found at {file}")
+                self.log(f"config.txt not found at {file}")
                 self.__isready = False
                 return
         # read config file

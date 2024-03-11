@@ -42,3 +42,18 @@ class Logger(object):
             self.logger.error(msg)
         elif level == 'CRITICAL':
             self.logger.critical(msg)
+
+    def warning(self, msg: str):
+        self.logger.warning(msg)
+
+    def error(self, msg: str):
+        self.logger.error(msg)
+
+    def critical(self, msg: str):
+        self.logger.critical(msg)
+
+    def info(self, msg: str):
+        self.logger.info(msg)
+
+    def debug(self, msg: str):
+        self.logger.debug(msg)

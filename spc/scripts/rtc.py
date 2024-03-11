@@ -1,10 +1,9 @@
 from spc.spc import SPC
 from spc.utils import run_command
 from spc.logger import Logger
-from datetime import datetime
 
 log = Logger("RTC")
-spc = SPC()
+spc = SPC(log=log)
 
 def main():
     rtc = spc.read_rtc()

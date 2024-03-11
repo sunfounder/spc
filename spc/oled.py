@@ -2,7 +2,6 @@ from .i2c import I2C
 from .logger import Logger
 from PIL import Image, ImageDraw, ImageFont
 
-log = Logger('OLED')
 __app_name__ = 'spc'
 
 SSD1306_I2C_ADDRESS_1 = 0x3C
@@ -276,10 +275,14 @@ class SSD1306_96_16(SSD1306_I2C):
 
 
 class OLED(object):
-    def __init__(self):
+    def __init__(self, log=None):
+        if log is None:
+            self.log = Logger(__name__)
+        else:
+            self.log = log
         addresses = self.check_oled()
         if len(addresses) == 0:
-            log("No OLED found", level='WARNING')
+            self.log.warning("No OLED found")
         else:
             self.oled = SSD1306_128_64(i2c_address=addresses[0])
             self.init()

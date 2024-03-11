@@ -9,24 +9,25 @@ import json
 
 from spc.config import Config
 from spc.logger import Logger
-from spc.system_status import get_memory_info, get_disks_info, get_network_info, get_cpu_info, get_boot_time
 
 from urllib.parse import urlparse, parse_qs
-from os import system as run_command
 
 log = Logger('DASHBOARD')
+LOG_PATH = '/opt/spc/log/'
 STATIC_URL = '/opt/spc/www/'
 COMMAND_PATH = '/opt/spc/spc_service'
 
-spc = SPC()
-ha = HA_API()
-db = Database()
-config = Config()
+spc = SPC(log=log)
+ha = HA_API(log=log)
+db = Database(log=log)
+config = Config(log=log)
 
-PORT = config.getint('dashboard', 'port', default=34001)
+DEBUG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+
+PORT = config.get('dashboard', 'port', default=34001)
 
 parser = argparse.ArgumentParser(description='spc-dashboard')
-parser.add_argument('--ssl', action=argparse.BooleanOptionalAction, default=config.getboolean('dashboard', 'ssl'), help='Enable SSL')
+parser.add_argument('--ssl', action=argparse.BooleanOptionalAction, default=config.get('dashboard', 'ssl'), help='Enable SSL')
 parser.add_argument('--ssl-ca-cert', default=config.get('dashboard', 'ssl_ca_cert'), help='SSL CA cert')
 parser.add_argument('--ssl-cert', default=config.get('dashboard', 'ssl_cert'), help='SSL cert')
 
@@ -74,6 +75,17 @@ def log_error(func):
             raise
     return wrapper
 
+# get all log files in /opt/spc/log
+def get_log_list():
+    import os
+    log_files = os.listdir(LOG_PATH)
+    return log_files
+
+def get_log_level(line):
+    for level in DEBUG_LEVELS:
+        if f"[{level}]" in line:
+            return level
+    return DEBUG_LEVELS.index('INFO')
 class RequestHandler(BaseHTTPRequestHandler):
     api_prefix = '/api/v1.0/'
     routes = ["/", "/dashboard", "/minimal"]
@@ -190,16 +202,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "error": result[1]
                 }
                 status = True
-        elif command == 'get-all':
-            data = spc.read_all()
-            data['cpu'] = get_cpu_info()
-            data['memory'] = get_memory_info()
-            data['disk'] = get_disks_info()
-            data['network'] = get_network_info()
-            data['boot_time'] = get_boot_time()
-            if ha.is_homeassistant_addon():
-                data['network']["type"] = ha.get_network_connection_type()
-            status = True
         elif command == 'get-config':
             status = True
             data = config.get_all()
@@ -210,15 +212,58 @@ class RequestHandler(BaseHTTPRequestHandler):
                 n = int(param['n'][0])
             status = True
             data = db.get('history', n=n)
+            # print(data)
         elif command == "get-time-range":
-            if 'start' in param and 'end' in param:
-                start = int(param['start'][0])
-                end = int(param['end'][0])
-                status = True
-                data = db.get_data_by_time_range('history', start, end)
-            else:
+            if 'start' not in param or 'end' not in param:
                 status = False
                 error = "ERROR, start or end not found"
+            else:
+                start = int(param['start'][0])
+                end = int(param['end'][0])
+                key = "*"
+                if 'key' in param:
+                    key = param['key'][0]
+                status = True
+                data = db.get_data_by_time_range('history', start, end, key)
+        elif command == "get-log-list":
+            status = True
+            data = get_log_list()
+        elif command == "get-log":
+            if 'log' not in param:
+                status = False
+                error = "ERROR, file not specified"
+            else:
+                log_file = param['log'][0]
+                n = 100
+                if "n" in param:
+                    n = int(param['n'][0])
+                filter = []
+                if "filter" in param:
+                    filter = param['filter'][0]
+                    filter = filter.split(',')
+                level = "INFO"
+                if "level" in param:
+                    level = param['level'][0]
+                status = True
+                with open(f"{LOG_PATH}{log_file}", 'r') as f:
+                    lines = f.readlines()
+                    lines = lines[-n:]
+                    data = []
+                    for line in lines:
+                        check = True
+                        if len(filter) > 0:
+                            for f in filter:
+                                if f in line:
+                                    break
+                            else:
+                                check = False
+                        log_level = DEBUG_LEVELS.index(level)
+                        current_log_level = DEBUG_LEVELS.index(get_log_level(line))
+                        if current_log_level < log_level:
+                            check = False
+                        if check:
+                            data.append(line)
+                status = True
         else:
             status = False
             error = f"Command not found {command}"
@@ -237,8 +282,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         data = payload['data']
         if command == 'set-fan-mode':
             spc.set_fan_mode(data)
+            db.set('config', {'auto_fan_mode': data})
         elif command == 'set-fan-state':
             spc.set_fan_state(data)
+            db.set('config', {'auto_fan_state': data})
         elif command == 'set-config':
             db_config = {}
             print(data)
@@ -247,14 +294,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                 for key in section:
                     value = section[key]
                     config.set(section_name, key, value)
+                    print(f"Value: {value}, Type: {type(value)}")
                     db_config[f"{section_name}_{key}"] = value
                     print(f"Set {section_name}.{key} = {value}")
             
             status, result = db.set('config', db_config)
             if not status:
                 return {"status": False, "error": result}
-        elif command == 'restart-service':
-            run_command(f"python3 {COMMAND_PATH} restart")
         else:
             return {"status": False, "error": f"Command not found [{command}]"}
         return {"status": True, "data": data}

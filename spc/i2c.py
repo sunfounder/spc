@@ -22,6 +22,12 @@ class I2C():
     def read_byte(self):
         return self._smbus.read_byte(self._address)
 
+    def read_byte_data(self, reg):
+        return self._smbus.read_byte_data(self._address, reg)
+
+    def read_word_data(self, reg):
+        return self._smbus.read_word_data(self._address, reg)
+
     def read_block_data(self, reg, num):
         return self._smbus.read_i2c_block_data(self._address, reg, num)
 

@@ -37,8 +37,8 @@ def main():
             print(f"Charging: {spc.read_is_charging()}")
         if ('fan_power' in spc.device.peripherals):
             print(f"Fan power: {spc.read_fan_power()} %")
-        if ('shutdown_battery_pct' in spc.device.peripherals):
-            print(f"Shutdown battery percentage: {spc.read_shutdown_battery_pct()}")
+        if ('shutdown_battery_percentage' in spc.device.peripherals):
+            print(f"Shutdown battery percentage: {spc.read_shutdown_battery_percentage()} %")
 
         print('')
         print(f"Others:")

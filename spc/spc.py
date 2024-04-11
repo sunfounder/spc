@@ -36,7 +36,7 @@ class SPC():
     REG_READ_IS_CHARGING = 18
     REG_READ_FAN_POWER = 19
     REG_READ_SHUTDOWN_REQUEST = 20
-    REG_READ_SHUTDOWN_BATTERY_PCT = 21
+    REG_READ_SHUTDOWN_BATTERY_PERCENTAGE = 21
 
     REG_READ_FIRMWARE_VERSION_MAJOR = 128
     REG_READ_FIRMWARE_VERSION_MINOR = 129
@@ -62,7 +62,7 @@ class SPC():
     REG_WRITE_RTC_SECOND = 6
     REG_WRITE_RTC_MILLISECOND = 7
     REG_WRITE_RTC_SETTING = 8
-    REG_WRITE_SHUTDOWN_BATTERY_PCT = 9
+    REG_WRITE_SHUTDOWN_BATTERY_PERCENTAGE = 9
 
     COMMAN_DATA_LENGTH = 22
 
@@ -173,7 +173,7 @@ class SPC():
     def read_shutdown_battery_percentage(self) -> int:
         if 'shutdown_battery_percentage' not in self.device.peripherals:
             raise ValueError(f"Shutdown battery percentage not supported for {self.device.name}")
-        return self.i2c.read_byte_data(self.REG_READ_SHUTDOWN_BATTERY_PCT)
+        return self.i2c.read_byte_data(self.REG_READ_SHUTDOWN_BATTERY_PERCENTAGE)
 
     def read_firmware_version(self):
         result = self.i2c.read_block_data(self.REG_READ_FIRMWARE_VERSION_MAJOR, 3)
@@ -235,10 +235,10 @@ class SPC():
         if 'shutdown_request' in self.device.peripherals:
             data['shutdown_request'] = result[self.REG_READ_SHUTDOWN_REQUEST]
         if 'shutdown_battery_percentage' in self.device.peripherals:
-            data['shutdown_battery_percentage'] = result[self.REG_READ_SHUTDOWN_BATTERY_PCT]
+            data['shutdown_battery_percentage'] = result[self.REG_READ_SHUTDOWN_BATTERY_PERCENTAGE]
         return data
 
-    def set_fan_power(self, power):
+    def write_fan_power(self, power):
         if 'fan' not in self.device.peripherals:
             raise ValueError(f"Fan not supported for {self.device.name}")
         if power <= 0:
@@ -248,16 +248,16 @@ class SPC():
 
         self.i2c.write_byte_data(self.REG_WRITE_FAN_POWER, power)
 
-    def set_shutdown_battery_pct(self, percentage):
-        if 'shutdown_battery_pct' not in self.device.peripherals:
+    def write_shutdown_battery_percentage(self, percentage):
+        if 'shutdown_battery_percentage' not in self.device.peripherals:
             raise ValueError(f"Shutdown battery percentage not supported for {self.device.name}")
         if percentage <= self.SHUTDOWM_BATTERY_MIN:
             percentage = self.SHUTDOWM_BATTERY_MIN
         elif percentage > 100:
             percentage = 100
-        self.i2c.write_byte_data(self.REG_WRITE_SHUTDOWN_BATTERY_PCT, percentage)
+        self.i2c.write_byte_data(self.REG_WRITE_SHUTDOWN_BATTERY_PERCENTAGE, percentage)
 
-    def set_rtc(self, date:list):
+    def write_rtc(self, date:list):
         '''
             date, list for [year, month, day, hour, minute, second, 1/128 second]
         '''

@@ -41,8 +41,8 @@ def main():
             print(f"Charging: {data_buffer['is_charging']}")
         if ('fan_power' in data_buffer):
             print(f"Fan power: {data_buffer['fan_power']} %")
-        if ('shutdown_battery_pct' in data_buffer):
-            print(f"Shutdown battery percentage: {data_buffer['shutdown_battery_pct']}")
+        if ('shutdown_battery_percentage' in data_buffer):
+            print(f"Shutdown battery percentage: {data_buffer['shutdown_battery_percentage']} %")
 
         print('')
         print(f"Internal data:")

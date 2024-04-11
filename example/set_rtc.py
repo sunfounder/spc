@@ -16,7 +16,7 @@ time_list = [
 ]
 
 print(f"Set RTC to: {current_time.year}-{current_time.month:02d}-{current_time.day:02d} {current_time.hour:02d}:{current_time.minute:02d}:{current_time.second:02d}")
-spc.set_rtc(time_list)
+spc.write_rtc(time_list)
 
 year, month, day, hour, min, sec, ssec = spc.read_rtc()
 year += 2000

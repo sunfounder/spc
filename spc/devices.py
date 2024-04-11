@@ -1,31 +1,50 @@
 
 class Devices():
-    DEVICES = [
-        {
+    DEVICES = {
+        0x5A:{
             'name': 'Pironman U1',
             'id': 'pironman_u1',
-            "address": 0x00,
+            "address": 0x5A,
             "peripherals": [
-                'battery',
-                'external_input',
-                'power_source_sensor',
-                'raspberry_pi_power',
-                'fan',
-                'ir',
+                'input_voltage',
+                'input_current',
+                'output_voltage',
+                'output_current',
+                'battery_voltage',
+                'battery_current',
+                'battery_capacity',
+                'battery_percentage',
+                'power_source',
+                'is_input_plugged_in',
+                'is_battery_plugged_in',
+                'is_charging',
+                'fan_power',
+                'shutdown_request',
+                'shutdown_battery_percentage',
+                'rtc',
             ],
-        }, {
-            'name': 'Pironman 4',
-            'id': 'pironman_4',
-            "address": 0x01,
+        },
+        0x5B: {
+            'name': 'PiPower 3',
+            'id': 'pipower_3',
+            "address": 0x5B,
             "peripherals": [
-                'external_input',
-                'fan',
-                'oled',
-                'ws2812',
-                'ir',
+                'input_voltage',
+                'output_voltage',
+                'battery_voltage',
+                'battery_percentage',
+                'power_source',
+                'is_input_plugged_in',
+                'is_battery_plugged_in',
+                'is_charging',
+                'shutdown_request',
+                'shutdown_battery_percentage',
+                'power_source_voltage',
+                'always_on',
             ],
         }
-    ]
+    }
+    ADDRESS = DEVICES.keys()
     def __init__(self, address):
         self.device = self.DEVICES[address]
         self.name = self.device['name']

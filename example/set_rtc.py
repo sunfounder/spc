@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from spc.spc import SPC
-import time
 from datetime import datetime
 
 spc = SPC()
@@ -13,12 +12,13 @@ time_list = [
     current_time.hour,
     current_time.minute,
     current_time.second,
-    # current_time.microsecond,
     int(128*current_time.microsecond/1000000),
 ]
-# time_list.pop()
 
-print(current_time.microsecond)
-print(f"time_list: {time_list}")
+print(f"Set RTC to: {current_time.year}-{current_time.month:02d}-{current_time.day:02d} {current_time.hour:02d}:{current_time.minute:02d}:{current_time.second:02d}")
 spc.set_rtc(time_list)
-print(f"\033[K set RTC: {current_time.year}-{current_time.month:02d}-{current_time.day:02d} {current_time.hour:02d}:{current_time.minute:02d}:{current_time.second:02d}")
+
+year, month, day, hour, min, sec, ssec = spc.read_rtc()
+year += 2000
+print(f"Done setting RTC")
+print(f"Current RTC: {year}-{month:02d}-{day:02d} {hour:02d}:{min:02d}:{sec:02d}:{ssec:03d}")

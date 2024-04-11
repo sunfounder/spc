@@ -18,17 +18,11 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-  'paho-mqtt',
-  'requests',
   'smbus2',
-  'rpi_ws281x',
-  'pillow',
-  'psutil',
-  'influxdb',
 ]
 
 [tool.setuptools]
-packages = ["spc", "spc.scripts"]
+packages = ["spc"]
 
 [project.urls]
 "Homepage" = "https://github.com/sunfounder/spc"
@@ -36,11 +30,6 @@ packages = ["spc", "spc.scripts"]
 
 [project.scripts]
 spc = "spc:main"
-spc_auto = "spc.scripts.auto:main"
-spc_dashboard = "spc.scripts.dashboard:main"
-spc_mqtt_client = "spc.scripts.mqtt_client:main"
-spc_rtc = "spc.scripts.rtc:main"
-spc_data_logger = "spc.scripts.data_logger:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "spc.__version__"}

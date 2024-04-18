@@ -4,8 +4,6 @@ import time
 
 spc = SPC()
 
-RIGHT_STR_MAX_LEN = 20
-
 def main():
     print(f"Board name: {spc.device.name}")
     print(f"Firmware Version: {spc.read_firmware_version()}")

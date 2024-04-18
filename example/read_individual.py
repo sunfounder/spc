@@ -28,7 +28,7 @@ def main():
             print(f"Battery percentage: {spc.read_battery_percentage()} %")
         if ('power_source'  in spc.device.peripherals):
             power_source = spc.read_power_source()
-            print(f"Power source: {power_source} ({'Battery' if power_source == spc.BATTERY else 'External'})")
+            print(f"Power source: {power_source} - {'Battery' if power_source == spc.BATTERY else 'External'}")
         if ('is_input_plugged_in'  in spc.device.peripherals):
             print(f"Input plugged in: {spc.read_is_input_plugged_in()}")
         if ('is_battery_plugged_in'  in spc.device.peripherals):
@@ -37,17 +37,29 @@ def main():
             print(f"Charging: {spc.read_is_charging()}")
         if ('fan_power' in spc.device.peripherals):
             print(f"Fan power: {spc.read_fan_power()} %")
-        if ('shutdown_battery_percentage' in spc.device.peripherals):
-            print(f"Shutdown battery percentage: {spc.read_shutdown_battery_percentage()} %")
 
         print('')
         print(f"Others:")
-        print(f"Shutdown request: {spc.read_shutdown_request()}")
+        shutdown_request = spc.read_shutdown_request()
+        shutdown_request_str = 'None'
+        if shutdown_request == spc.SHUTDOWN_REQUEST_NONE:
+            shutdown_request_str = 'None'
+        elif shutdown_request == spc.SHUTDOWN_REQUEST_LOW_BATTERY:
+            shutdown_request_str = 'Low battery'
+        elif shutdown_request == spc.SHUTDOWN_REQUEST_BUTTON:
+            shutdown_request_str = 'Button'
+        else:
+            shutdown_request_str = 'Unknown'
+        print(f"Shutdown request: {shutdown_request} - {shutdown_request_str}")
         print(f'Board id: {spc.read_board_id()}')
         if ('always_on' in spc.device.peripherals):
             print(f"Always on: {spc.read_always_on()}")
         if ('power_source_voltage' in spc.device.peripherals):
             print(f"Power source voltage: {spc.read_power_source_voltage()} mV")
+        if ('shutdown_percentage' in spc.device.peripherals):
+            print(f"Shutdown percentage: {spc.read_shutdown_percentage()} %")
+        if ('power_off_percentage' in spc.device.peripherals):
+            print(f"Power off percentage: {spc.read_power_off_percentage()} %")
 
         print('')
         time.sleep(1)

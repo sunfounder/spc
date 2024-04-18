@@ -20,8 +20,7 @@ class Devices():
                 'is_charging',
                 'fan_power',
                 'shutdown_request',
-                'shutdown_battery_percentage',
-                'rtc',
+                'shutdown_percentage',
             ],
         },
         0x5B: {
@@ -38,9 +37,10 @@ class Devices():
                 'is_battery_plugged_in',
                 'is_charging',
                 'shutdown_request',
-                'shutdown_battery_percentage',
-                'power_source_voltage',
                 'always_on',
+                'power_source_voltage',
+                'shutdown_percentage',
+                'power_off_percentage',
             ],
         }
     }

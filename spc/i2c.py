@@ -1,5 +1,4 @@
 from smbus2 import SMBus
-from .utils import run_command
 
 class I2C():
     def __init__(self, address, bus=1):

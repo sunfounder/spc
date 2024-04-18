@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 from .i2c import I2C
-import struct
 from .devices import Devices
-import sys
-import time
 
 # class SPC()
 # =================================================================

@@ -39,19 +39,20 @@ def main():
             print(f"Fan power: {spc.read_fan_power()} %")
 
         print('')
-        print(f"Others:")
-        shutdown_request = spc.read_shutdown_request()
-        shutdown_request_str = 'None'
-        if shutdown_request == spc.SHUTDOWN_REQUEST_NONE:
-            shutdown_request_str = 'None'
-        elif shutdown_request == spc.SHUTDOWN_REQUEST_LOW_BATTERY:
-            shutdown_request_str = 'Low battery'
-        elif shutdown_request == spc.SHUTDOWN_REQUEST_BUTTON:
-            shutdown_request_str = 'Button'
-        else:
-            shutdown_request_str = 'Unknown'
-        print(f"Shutdown request: {shutdown_request} - {shutdown_request_str}")
+        print(f"Internal data:")
         print(f'Board id: {spc.read_board_id()}')
+        if ('shutdown_request' in spc.device.peripherals):
+            shutdown_request = spc.read_shutdown_request()
+            shutdown_request_str = 'None'
+            if shutdown_request == spc.SHUTDOWN_REQUEST_NONE:
+                shutdown_request_str = 'None'
+            elif shutdown_request == spc.SHUTDOWN_REQUEST_LOW_BATTERY:
+                shutdown_request_str = 'Low battery'
+            elif shutdown_request == spc.SHUTDOWN_REQUEST_BUTTON:
+                shutdown_request_str = 'Button'
+            else:
+                shutdown_request_str = 'Unknown'
+            print(f"Shutdown request: {shutdown_request} - {shutdown_request_str}")
         if ('always_on' in spc.device.peripherals):
             print(f"Always on: {spc.read_always_on()}")
         if ('power_source_voltage' in spc.device.peripherals):

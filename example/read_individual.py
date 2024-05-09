@@ -31,8 +31,6 @@ def main():
             print(f"Power source: {power_source} - {'Battery' if power_source == spc.BATTERY else 'External'}")
         if ('is_input_plugged_in'  in spc.device.peripherals):
             print(f"Input plugged in: {spc.read_is_input_plugged_in()}")
-        if ('is_battery_plugged_in'  in spc.device.peripherals):
-            print(f"Battery plugged in: {spc.read_is_battery_plugged_in()}")
         if ('is_charging' in spc.device.peripherals):
             print(f"Charging: {spc.read_is_charging()}")
         if ('fan_power' in spc.device.peripherals):
@@ -53,10 +51,8 @@ def main():
             else:
                 shutdown_request_str = 'Unknown'
             print(f"Shutdown request: {shutdown_request} - {shutdown_request_str}")
-        if ('always_on' in spc.device.peripherals):
-            print(f"Always on: {spc.read_always_on()}")
-        if ('power_source_voltage' in spc.device.peripherals):
-            print(f"Power source voltage: {spc.read_power_source_voltage()} mV")
+        if ('default_on' in spc.device.peripherals):
+            print(f"Default on: {spc.read_default_on()}")
         if ('shutdown_percentage' in spc.device.peripherals):
             print(f"Shutdown percentage: {spc.read_shutdown_percentage()} %")
         if ('power_off_percentage' in spc.device.peripherals):

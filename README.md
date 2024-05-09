@@ -17,12 +17,10 @@
       - [SPC.read\_battery\_capacity() -\> int](#spcread_battery_capacity---int)
       - [SPC.read\_power\_source() -\> int](#spcread_power_source---int)
       - [SPC.read\_is\_input\_plugged\_in() -\> bool](#spcread_is_input_plugged_in---bool)
-      - [SPC.read\_is\_battery\_plugged\_in() -\> bool](#spcread_is_battery_plugged_in---bool)
       - [SPC.read\_is\_charging() -\> bool](#spcread_is_charging---bool)
       - [SPC.read\_fan\_power() -\> int](#spcread_fan_power---int)
       - [SPC.read\_shutdown\_request() -\> bool](#spcread_shutdown_request---bool)
-      - [SPC.read\_always\_on() -\> bool](#spcread_always_on---bool)
-      - [SPC.read\_power\_source\_voltage() -\> int](#spcread_power_source_voltage---int)
+      - [SPC.read\_default\_on() -\> bool](#spcread_default_on---bool)
       - [SPC.read\_shutdown\_percentage() -\> int](#spcread_shutdown_percentage---int)
       - [SPC.read\_power\_off\_percentage() -\> int](#spcread_power_off_percentage---int)
       - [SPC.read\_all() -\> dict](#spcread_all---dict)
@@ -175,15 +173,6 @@ is_input_plugged_in = spc.read_is_input_plugged_in()
 print(f"Is input plugged in: {is_input_plugged_in}")
 ```
 
-#### SPC.read_is_battery_plugged_in() -> bool
-
-Read if the battery is plugged in.
-
-```
-is_battery_plugged_in = spc.read_is_battery_plugged_in()
-print(f"Is battery plugged in: {is_battery_plugged_in}")
-```
-
 #### SPC.read_is_charging() -> bool
 
 Read if the battery is charging.
@@ -218,22 +207,13 @@ else:
     print("Unknown shutdown request")
 ```
 
-#### SPC.read_always_on() -> bool
+#### SPC.read_default_on() -> bool
 
-Read if the always-on mode is enabled.
-
-```
-always_on = spc.read_always_on()
-print(f"Always on: {always_on}")
-```
-
-#### SPC.read_power_source_voltage() -> int
-
-Read the power source voltage in mV.
+Read if the default-on mode is enabled.
 
 ```
-power_source_voltage = spc.read_power_source_voltage()
-print(f"Power source voltage: {power_source_voltage} mV")
+default_on = spc.read_default_on()
+print(f"Default on: {default_on}")
 ```
 
 #### SPC.read_shutdown_percentage() -> int

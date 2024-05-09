@@ -28,8 +28,5 @@ packages = ["spc"]
 "Homepage" = "https://github.com/sunfounder/spc"
 "Bug Tracker" = "https://github.com/sunfounder/spc/issues"
 
-[project.scripts]
-spc = "spc:main"
-
 [tool.setuptools.dynamic]
 version = {attr = "spc.__version__"}

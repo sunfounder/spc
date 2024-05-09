@@ -29,7 +29,6 @@ class SPC():
     REG_READ_BATTERY_CAPACITY = 13
     REG_READ_POWER_SOURCE = 15
     REG_READ_IS_INPUT_PLUGGED_IN = 16
-    REG_READ_IS_BATTERY_PLUGGED_IN = 17
     REG_READ_IS_CHARGING = 18
     REG_READ_FAN_POWER = 19
     REG_READ_SHUTDOWN_REQUEST = 20
@@ -45,9 +44,8 @@ class SPC():
     REG_READ_RTC_MINUTE = 136
     REG_READ_RTC_SECOND = 137
     REG_READ_RTC_MILLISECOND = 138
-    REG_READ_ALWAYS_ON = 139
+    REG_READ_DEFAULT_ON = 139
     REG_READ_BOARD_ID = 140
-    REG_READ_POWER_SOURCE_VOLTAGE = 141
     REG_READ_SHUTDOWN_PERCENTAGE = 143
     REG_READ_POWER_OFF_PERCENTAGE = 144
 
@@ -142,11 +140,6 @@ class SPC():
             raise ValueError(f"Input plugged in status not supported for {self.device.name}")
         return self.i2c.read_byte_data(self.REG_READ_IS_INPUT_PLUGGED_IN)
 
-    def read_is_battery_plugged_in(self) -> int:
-        if 'is_battery_plugged_in' not in self.device.peripherals:
-            raise ValueError(f"Battery plugged in status not supported for {self.device.name}")
-        return self.i2c.read_byte_data(self.REG_READ_IS_BATTERY_PLUGGED_IN)
-
     def read_is_charging(self) -> int:
         if 'is_charging' not in self.device.peripherals:
             raise ValueError(f"Charging status not supported for {self.device.name}")
@@ -174,18 +167,13 @@ class SPC():
         result[6] = int(1000*result[6]/128) # 1/128 seconds to millisecond
         return result
 
-    def read_always_on(self) -> int:
-        if 'always_on' not in self.device.peripherals:
-            raise ValueError(f"Always on not supported for {self.device.name}")
-        return self.i2c.read_byte_data(self.REG_READ_ALWAYS_ON)
+    def read_default_on(self) -> int:
+        if 'default_on' not in self.device.peripherals:
+            raise ValueError(f"Default on not supported for {self.device.name}")
+        return self.i2c.read_byte_data(self.REG_READ_DEFAULT_ON)
 
     def read_board_id(self) -> int:
         return self.i2c.read_byte_data(self.REG_READ_BOARD_ID)
-
-    def read_power_source_voltage(self) -> int:
-        if 'power_source_voltage' not in self.device.peripherals:
-            raise ValueError(f"Power source voltage not supported for {self.device.name}")
-        return self.i2c.read_word_data(self.REG_READ_POWER_SOURCE_VOLTAGE)
 
     def read_shutdown_percentage(self) -> int:
         if 'shutdown_percentage' not in self.device.peripherals:
@@ -223,8 +211,6 @@ class SPC():
             data['power_source'] = result[self.REG_READ_POWER_SOURCE]
         if 'is_input_plugged_in' in self.device.peripherals:
             data['is_input_plugged_in'] = result[self.REG_READ_IS_INPUT_PLUGGED_IN] == 1
-        if 'is_battery_plugged_in' in self.device.peripherals:
-            data['is_battery_plugged_in'] = result[self.REG_READ_IS_BATTERY_PLUGGED_IN] == 1
         if 'is_charging' in self.device.peripherals:
             data['is_charging'] = result[self.REG_READ_IS_CHARGING] == 1
         if 'fan_power' in self.device.peripherals:

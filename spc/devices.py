@@ -37,7 +37,6 @@ class Devices():
                 'shutdown_request',
                 'default_on',
                 'shutdown_percentage',
-                'power_off_percentage',
             ],
         }
     }

@@ -61,7 +61,7 @@ class SPC():
     REG_WRITE_SHUTDOWN_PERCENTAGE = 9
     REG_WRITE_POWER_OFF_PERCENTAGE = 10
 
-    def __init__(self, get_logger=None):
+    def __init__(self, mode="normal",get_logger=None):
         if get_logger is None:
             import logging
             get_logger = logging.getLogger
@@ -78,7 +78,7 @@ class SPC():
             else:
                 raise IOError(f"SPC init error: I2C device not found")
         self.device = Devices(self.addr)
-        self.i2c = I2C(self.addr)
+        self.i2c = I2C(self.addr, mode=mode)
         if not self.i2c.is_ready():
             self.log.error(f'SPC init error: I2C device not found at address 0x{self.addr:02X}')
             self._is_ready = False
@@ -98,7 +98,7 @@ class SPC():
     def read_input_current(self) -> int:
         if 'input_current' not in self.device.peripherals:
             raise ValueError(f"Input current not supported for {self.device.name}")
-        return self.i2c.read_byte_data(self.REG_READ_INPUT_CURRENT)
+        return self.i2c.read_word_data(self.REG_READ_INPUT_CURRENT)
 
     def read_output_voltage(self) -> int:
         if 'output_voltage' not in self.device.peripherals:
@@ -118,7 +118,9 @@ class SPC():
     def read_battery_current(self) -> int:
         if 'battery_current' not in self.device.peripherals:
             raise ValueError(f"Battery current not supported for {self.device.name}")
-        return self.i2c.read_word_data(self.REG_READ_BATTERY_CURRENT)
+        uint16_val = self.i2c.read_word_data(self.REG_READ_BATTERY_CURRENT)
+        int16_val = uint16_val if uint16_val < 32768 else uint16_val - 65536
+        return int16_val
 
     def read_battery_percentage(self) -> int:
         if 'battery_percentage' not in self.device.peripherals:
@@ -128,7 +130,7 @@ class SPC():
     def read_battery_capacity(self) -> int:
         if 'battery_capacity' not in self.device.peripherals:
             raise ValueError(f"Battery capacity not supported for {self.device.name}")
-        return self.i2c.read_byte_data(self.REG_READ_BATTERY_CAPACITY)
+        return self.i2c.read_word_data(self.REG_READ_BATTERY_CAPACITY)
 
     def read_power_source(self) -> int:
         if 'power_source' not in self.device.peripherals:
@@ -188,6 +190,11 @@ class SPC():
     def _unpack_u16(self, data, reg):
         return data[reg+1] << 8 | data[reg]
 
+    def _unpack_int16(self, data, reg):
+        uint16_val = self._unpack_u16(data, reg)
+        int16_val = uint16_val if uint16_val < 32768 else uint16_val - 65536
+        return int16_val
+
     def read_all(self) -> dict:
         result = self.i2c.read_block_data(self.REG_READ_START, self.REG_READ_COMMON_LENGTH)
         data = {}
@@ -202,7 +209,7 @@ class SPC():
         if 'battery_voltage' in self.device.peripherals:
             data['battery_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_VOLTAGE)
         if 'battery_current' in self.device.peripherals:
-            data['battery_current'] = self._unpack_u16(result, self.REG_READ_BATTERY_CURRENT)
+            data['battery_current'] = self._unpack_int16(result, self.REG_READ_BATTERY_CURRENT)
         if 'battery_percentage' in self.device.peripherals:
             data['battery_percentage'] = result[self.REG_READ_BATTERY_PERCENTAGE]
         if 'battery_capacity' in self.device.peripherals:
@@ -220,8 +227,8 @@ class SPC():
         return data
 
     def write_fan_power(self, power):
-        if 'fan' not in self.device.peripherals:
-            raise ValueError(f"Fan not supported for {self.device.name}")
+        if 'fan_power' not in self.device.peripherals:
+            raise ValueError(f"Fan power not supported for {self.device.name}")
         if power <= 0:
             power = 0
         elif power > 100:

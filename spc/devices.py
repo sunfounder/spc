@@ -20,6 +20,7 @@ class Devices():
                 'fan_power',
                 'shutdown_request',
                 'shutdown_percentage',
+                'default_on',
             ],
         },
         0x5B: {

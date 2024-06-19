@@ -58,8 +58,7 @@ def main():
         if ('power_off_percentage' in spc.device.peripherals):
             print(f"Power off percentage: {spc.read_power_off_percentage()} %")
 
-        print('')
-        print('')
+        print('--------------------------------')
         time.sleep(1)
 
 if __name__ == '__main__':

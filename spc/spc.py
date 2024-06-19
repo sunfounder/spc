@@ -61,7 +61,7 @@ class SPC():
     REG_WRITE_SHUTDOWN_PERCENTAGE = 9
     REG_WRITE_POWER_OFF_PERCENTAGE = 10
 
-    def __init__(self, mode="normal",get_logger=None):
+    def __init__(self, get_logger=None):
         if get_logger is None:
             import logging
             get_logger = logging.getLogger
@@ -78,12 +78,11 @@ class SPC():
             else:
                 raise IOError(f"SPC init error: I2C device not found")
         self.device = Devices(self.addr)
-        self.i2c = I2C(self.addr, mode=mode)
+        self.i2c = I2C(self.addr, mode=self.device.mode)
         if not self.i2c.is_ready():
             self.log.error(f'SPC init error: I2C device not found at address 0x{self.addr:02X}')
             self._is_ready = False
             return
-
         self.log.info(f'SPC detect device: {self.device.name} ({self.device.id})')
         self._is_ready = True
 

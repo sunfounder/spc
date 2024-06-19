@@ -5,6 +5,7 @@ class Devices():
             'name': 'Pironman U1',
             'id': 'pironman_u1',
             "address": 0x5A,
+            "mode": 'esp32',
             "peripherals": [
                 'input_voltage',
                 'input_current',
@@ -27,6 +28,7 @@ class Devices():
             'name': 'PiPower 3',
             'id': 'pipower_3',
             "address": 0x5B,
+            "mode": 'normal',
             "peripherals": [
                 'input_voltage',
                 'output_voltage',
@@ -46,5 +48,6 @@ class Devices():
         self.device = self.DEVICES[address]
         self.name = self.device['name']
         self.id = self.device['id']
-        self.address = self.device['address']   
+        self.address = self.device['address']
+        self.mode = self.device['mode']
         self.peripherals = self.device['peripherals']

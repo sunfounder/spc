@@ -18,7 +18,6 @@ class Devices():
                 'is_input_plugged_in',
                 'is_charging',
                 'fan_power',
-                'shutdown_request',
                 'shutdown_percentage',
             ],
         },

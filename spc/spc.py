@@ -12,12 +12,13 @@ class SPC():
     SHUTDOWN_REQUEST_NONE = 0
     SHUTDOWN_REQUEST_LOW_BATTERY = 1
     SHUTDOWN_REQUEST_BUTTON = 2
+    SHUTDOWN_REQUEST_LOW_BATTERY_VOLTAGE = 3
 
     SHUTDOWM_PERCENTAGE_MIN = 10
     POWER_OFF_PERCENTAGE_MIN = 5
 
     REG_READ_START = 0
-    REG_READ_COMMON_LENGTH = 21
+    REG_READ_COMMON_LENGTH = 25
 
     REG_READ_INPUT_VOLTAGE = 0
     REG_READ_INPUT_CURRENT = 2
@@ -32,6 +33,8 @@ class SPC():
     REG_READ_IS_CHARGING = 18
     REG_READ_FAN_POWER = 19
     REG_READ_SHUTDOWN_REQUEST = 20
+    REG_READ_BATTERY_1_VOLTAGE = 21
+    REG_READ_BATTERY_2_VOLTAGE = 23
 
     REG_READ_FIRMWARE_VERSION_MAJOR = 128
     REG_READ_FIRMWARE_VERSION_MINOR = 129
@@ -131,6 +134,16 @@ class SPC():
             raise ValueError(f"Battery capacity not supported for {self.device.name}")
         return self.i2c.read_word_data(self.REG_READ_BATTERY_CAPACITY)
 
+    def read_battery_1_voltage(self) -> int:
+        if 'battery_1_voltage' not in self.device.peripherals:
+            raise ValueError(f"Battery 1 voltage not supported for {self.device.name}")
+        return self.i2c.read_word_data(self.REG_READ_BATTERY_1_VOLTAGE)
+
+    def read_battery_2_voltage(self) -> int:
+        if 'battery_2_voltage' not in self.device.peripherals:
+            raise ValueError(f"Battery 2 voltage not supported for {self.device.name}")
+        return self.i2c.read_word_data(self.REG_READ_BATTERY_2_VOLTAGE)
+
     def read_power_source(self) -> int:
         if 'power_source' not in self.device.peripherals:
             raise ValueError(f"Power source not supported for {self.device.name}")
@@ -223,6 +236,11 @@ class SPC():
             data['fan_power'] = result[self.REG_READ_FAN_POWER]
         if 'shutdown_request' in self.device.peripherals:
             data['shutdown_request'] = result[self.REG_READ_SHUTDOWN_REQUEST]
+        if 'battery_1_voltage' in self.device.peripherals:
+            data['battery_1_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_1_VOLTAGE)
+        if 'battery_2_voltage' in self.device.peripherals:
+            data['battery_2_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_2_VOLTAGE)
+
         return data
 
     def write_fan_power(self, power):

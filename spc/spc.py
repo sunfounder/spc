@@ -236,10 +236,10 @@ class SPC():
             data['fan_power'] = result[self.REG_READ_FAN_POWER]
         if 'shutdown_request' in self.device.peripherals:
             data['shutdown_request'] = result[self.REG_READ_SHUTDOWN_REQUEST]
-        if 'battery_1_voltage' in self.device.peripherals:
-            data['battery_1_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_1_VOLTAGE)
-        if 'battery_2_voltage' in self.device.peripherals:
-            data['battery_2_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_2_VOLTAGE)
+        # if 'battery_1_voltage' in self.device.peripherals:
+        #     data['battery_1_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_1_VOLTAGE)
+        # if 'battery_2_voltage' in self.device.peripherals:
+        #     data['battery_2_voltage'] = self._unpack_u16(result, self.REG_READ_BATTERY_2_VOLTAGE)
 
         return data
 

@@ -60,8 +60,6 @@ class Devices():
                 'shutdown_request',
                 'shutdown_percentage',
                 'default_on',
-                'battery_1_voltage',
-                'battery_2_voltage',
             ],
         },
     }

@@ -33,8 +33,8 @@ class SPC():
     REG_READ_IS_CHARGING = 18
     REG_READ_FAN_POWER = 19
     REG_READ_SHUTDOWN_REQUEST = 20
-    REG_READ_BATTERY_1_VOLTAGE = 21
-    REG_READ_BATTERY_2_VOLTAGE = 23
+    # REG_READ_BATTERY_1_VOLTAGE = 21
+    # REG_READ_BATTERY_2_VOLTAGE = 23
 
     REG_READ_FIRMWARE_VERSION_MAJOR = 128
     REG_READ_FIRMWARE_VERSION_MINOR = 129
@@ -134,15 +134,15 @@ class SPC():
             raise ValueError(f"Battery capacity not supported for {self.device.name}")
         return self.i2c.read_word_data(self.REG_READ_BATTERY_CAPACITY)
 
-    def read_battery_1_voltage(self) -> int:
-        if 'battery_1_voltage' not in self.device.peripherals:
-            raise ValueError(f"Battery 1 voltage not supported for {self.device.name}")
-        return self.i2c.read_word_data(self.REG_READ_BATTERY_1_VOLTAGE)
+    # def read_battery_1_voltage(self) -> int:
+    #     if 'battery_1_voltage' not in self.device.peripherals:
+    #         raise ValueError(f"Battery 1 voltage not supported for {self.device.name}")
+    #     return self.i2c.read_word_data(self.REG_READ_BATTERY_1_VOLTAGE)
 
-    def read_battery_2_voltage(self) -> int:
-        if 'battery_2_voltage' not in self.device.peripherals:
-            raise ValueError(f"Battery 2 voltage not supported for {self.device.name}")
-        return self.i2c.read_word_data(self.REG_READ_BATTERY_2_VOLTAGE)
+    # def read_battery_2_voltage(self) -> int:
+    #     if 'battery_2_voltage' not in self.device.peripherals:
+    #         raise ValueError(f"Battery 2 voltage not supported for {self.device.name}")
+    #     return self.i2c.read_word_data(self.REG_READ_BATTERY_2_VOLTAGE)
 
     def read_power_source(self) -> int:
         if 'power_source' not in self.device.peripherals:

@@ -48,7 +48,7 @@ class Devices():
             "mode": 'normal',
             "peripherals": [
                 'input_voltage',
-                'input_current',
+                # 'input_current',
                 'output_voltage',
                 'output_current',
                 'battery_voltage',

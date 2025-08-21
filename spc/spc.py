@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from .i2c import I2C
 from .devices import Devices
+import time
 
 # class SPC()
 # =================================================================
@@ -17,6 +18,7 @@ class SPC():
     SHUTDOWM_PERCENTAGE_MIN = 10
     POWER_OFF_PERCENTAGE_MIN = 5
 
+    # ----
     REG_READ_START = 0
     REG_READ_COMMON_LENGTH = 25
 
@@ -39,7 +41,9 @@ class SPC():
     REG_READ_FIRMWARE_VERSION_MAJOR = 128
     REG_READ_FIRMWARE_VERSION_MINOR = 129
     REG_READ_FIRMWARE_VERSION_PATCH = 130
+
     REG_READ_RTC_CODE = 131
+
     REG_READ_RTC_YEAR = 132
     REG_READ_RTC_MONTH = 133
     REG_READ_RTC_DAY = 134
@@ -47,10 +51,23 @@ class SPC():
     REG_READ_RTC_MINUTE = 136
     REG_READ_RTC_SECOND = 137
     REG_READ_RTC_MILLISECOND = 138
+
     REG_READ_DEFAULT_ON = 139
-    REG_READ_BOARD_ID = 140
+
+    REG_BOARD_ID_H = 140
+    REG_BOARD_ID_L = 141
+
     REG_READ_SHUTDOWN_PERCENTAGE = 143
     REG_READ_POWER_OFF_PERCENTAGE = 144
+
+    REG_BAT_IR_L = 145
+    REG_BAT_IR_H = 146
+
+    REG_PWR_BTN_STATE = 154
+
+    REG_CHARGE_MAX_CURRENT = 155  # N*100mA
+
+    REG_BUZZER_VOL = 162
 
     REG_WRITE_FAN_POWER = 0
     REG_WRITE_RTC_YEAR = 1
@@ -63,6 +80,11 @@ class SPC():
     REG_WRITE_RTC_SETTING = 8
     REG_WRITE_SHUTDOWN_PERCENTAGE = 9
     REG_WRITE_POWER_OFF_PERCENTAGE = 10
+    REG_WRITE_CHARGE_SELECT = 11
+    REG_WRITE_POWER_BTN_STATE = 12
+    REG_WRITE_BUZZER_FEQ_L = 13
+    REG_WRITE_BUZZER_FEQ_H = 14
+    REG_WRITE_BUZZER_VOL = 15
 
     def __init__(self, get_logger=None):
         if get_logger is None:
@@ -187,7 +209,8 @@ class SPC():
         return self.i2c.read_byte_data(self.REG_READ_DEFAULT_ON)
 
     def read_board_id(self) -> int:
-        return self.i2c.read_byte_data(self.REG_READ_BOARD_ID)
+        data = self.i2c.read_block_data(self.REG_BOARD_ID_H, 2)
+        return (data[0] << 8 | data[1])
 
     def read_shutdown_percentage(self) -> int:
         if 'shutdown_percentage' not in self.device.peripherals:
@@ -279,3 +302,28 @@ class SPC():
             raise ValueError(f"RTC not supported for {self.device.name}")
         date.append(1)
         self.i2c.write_block_data(self.REG_WRITE_RTC_YEAR, date)
+
+    def buzzer_play_tone(self, tone, duration):
+        '''
+        tone, int, frequency of the tone
+        duration, int, duration of the tone in seconds
+        
+        '''
+        if 'buzzer' not in self.device.peripherals:
+            raise ValueError(f"Buzzer not supported for {self.device.name}")
+        self.i2c.write_word_data(self.REG_WRITE_BUZZER_FEQ_L, tone)
+        time.sleep(duration)
+        self.i2c.write_word_data(self.REG_WRITE_BUZZER_FEQ_L, 0)
+
+    def set_buzzer_volume(self, volume):
+        '''
+        volume, int, 0-10
+        '''
+        if 'buzzer' not in self.device.peripherals:
+            raise ValueError(f"Buzzer not supported for {self.device.name}")
+        self.i2c.write_byte_data(self.REG_WRITE_BUZZER_VOL, volume)
+
+    def get_buzzer_volume(self):
+        if 'buzzer' not in self.device.peripherals:
+            raise ValueError(f"Buzzer not supported for {self.device.name}")
+        return self.i2c.read_byte_data(self.REG_BUZZER_VOL)

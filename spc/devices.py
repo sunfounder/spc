@@ -44,6 +44,7 @@ class Devices():
         0x5C:{
             'name': 'PiPower 5',
             'id': 'pipower_5',
+            "board_id": 2602,
             "address": 0x5C,
             "mode": 'normal',
             "peripherals": [
@@ -60,6 +61,7 @@ class Devices():
                 'shutdown_request',
                 'shutdown_percentage',
                 'default_on',
+                'buzzer',
             ],
         },
     }

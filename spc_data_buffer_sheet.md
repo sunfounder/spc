@@ -34,23 +34,40 @@
 | rtc_second             | 137  |  1  |  u8   |  -   | -  |
 | rtc_ssec               | 138  |  1  |  u8   |  -   | 1/128 second                                                          |
 | alwaysOn               | 139  |  1  |  u8   |  -   | 0, Enable alwaysOn <br> 1, Disable alwaysOn                           |
-| board_id_l               | 140  |  1  |  u8   |  -   | 
-| board_id_h               | 141 |  1  |  u8   |  -   | 
+| board_id_h               | 140  |  1  |  u8   |  -   | 
+| board_id_l               | 141 |  1  |  u8   |  -   | 
 | -     | 142  |  -  |  u8  |  -   |
 | shutdown_pct           | 143  |  1  |  u8   |  -   | Current low battery shutdown percentage threshold                     |
 | poweroff_pct           | 144  |  1  |  u8   |  -   | Current low battery poweroff percentage threshold                     |
 | battery_IR             | 145  |  2  |  u16  | mOhm | battery IR                                                            |
 | battery_middle_voltage | 147  |  2  |  u16  |  mV  | battery middle voltage                                                |
-| charge_status          | 149  |  1  |  u8   |  -   | ip2363 charge status                                                  |
-| charge max current     | 150  |  1  |  u8   |  -   | the maximum of chargig current(N\*100mA)                              |
-| boot version  major    | 151  |  1  |  u8   |  -   | boot version
-| boot version  minor    | 152  |  1  |  u8   |  -   | boot version
-| boot version  patch    | 153  |  1  |  u8   |  -   | boot version
+| battery real voltage          | 149  |  2  |  u16   |  -   | Battery Voltage with Current and Internal Resistance Compensation                                                |
+| -    | 151  |  1  |  u8   |  -   | -|
+| -    | 152  |  1  |  u8   |  -   | -|
+| -    | 153  |  1  |  u8   |  -   | -|
 | key-state               |154 | 1  |  u8   |  -   | 0, Released; <br> 1, SingleClicked; <br> 2, DoubleClicked; <br> 3, LongPressed2S; <br> 4,     LongPressed2SAndReleased; <br> 5, LongPressed5S; <br> 6, LongPressed5SAndReleased; 
-|RECEIVED_PDO | 155 | 1  |  u8   |  -   | PDO 
-|SELECT_PDO | 156 | 1  |  u8   |  -   | PDO 
-| -   | -   | -   | -   | -   | -   |
-| --- | --- | --- | --- | --- | --- |
+|max_charging_current  | 155 | 1  |  u8   |  -   |N*100mA|
+|SELECT_PDO | 156 | 1  |  u8   |  -   | 000: default max PDO<br>001: 5V<br>010: 9V<br>011: 12V<br>100: 15V<br>101: 20V|
+| CHARGE_STATE  | 157 | 1  | u8  | -   | 000: standby<br>001: trickle charge<br>010: constant current charge<br>011: constant voltage charge<br>100: waiting for power source<br>101: fully charged<br>110: charging timeout |
+| IS_FAST_CHARGE| 158  |  1 |  u8  |  -   | 0: normal 5V charge0: normal 5V charge<br>1: fast charge|
+| -   | 159  |  1  |  u8   |  -   | -|
+| TYPE_C_STATE   | 160  |  1  |  u8   |  -   |0: no cable<br>1: connected<br>2: error|
+|TYPE_C_PDO | 161  |  1  |  u8   |   | supported PDO|
+| BUZZER_VOL    | 162  |  1  |  u8   |  -   | volume of buzzer|
+| -   | -  |  -  |  -   |  -  | -|
+| ADVANCED_CMD_START   | 172| 1 |  u8  |  -  | Placeholder|
+| BOOT_VERSION_MAJOR     | 173| 1 |  u8  |  -  | |
+| BOOT_VERSION_MINOR     | 174| 1 |  u8  |  -  | |
+| BOOT_VERSION_PATCH     | 175| 1 |  u8  |  -  | |
+| FACTORY_VERSION_MAJOR     | 176| 1 |  u8  |  -  | |
+| FACTORY_VERSION_MINOR     | 177| 1 |  u8  |  -  | |
+| FACTORY_VERSION_PATCH     | 178| 1 |  u8  |  -  | |
+| -   | -  |  -  |  -   |  -  | -|
+| REG_MAIN_ENTRY_B3     | 183| 1 |  u8  |  -  | |
+| REG_MAIN_ENTRY_B2     | 184| 1 |  u8  |  -  | |
+| REG_MAIN_ENTRY_B1     | 185| 1 |  u8  |  -  | |
+| REG_MAIN_ENTRY_B0     | 186| 1 |  u8  |  -  | |
+| -   | -  |  -  |  -   |  -  | -|
 
 ## settingBuffer
 
@@ -67,5 +84,9 @@
 | rtc_setting  |  8   |  1  |  u8  |  -   | 1, enable rtc setting                                     |
 | shutdown_pct |  9   |  1  |  u8  |  -   | setting low battery shutdown percentage threshold (0~100) |
 | poweroff_pct |  10  |  1  |  u8  |  -   | setting low battery poweroff percentage threshold (0~100) |
-| -            |  -   |  -  |  -   |  -   | -                                                         |
-| -            |  -   |  -  |  -   |  -   | -                                                         |
+| CHARGE_SELECT |  11  |  1  |  u8  |  -   | setting charge max current, N*100mA |
+|POWER_BTN_STATE| 12  |  1  |  u8  |  -   | write 0 to reset state |
+| BUZZER_FEQ_L |  13  |  1  |  u8   |  -   | setting  buzzer freq_l|
+| BUZZER_FEQ_H |  14  |  1  |  u8   |  -   | setting  buzzer freq_h|
+| BUZZER_VOL |  15  |  1  |  u8   |  -   | setting  buzzer volumn|
+| -            |  -   |  -  |  -   |  -   | -  |

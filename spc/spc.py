@@ -303,6 +303,16 @@ class SPC():
         date.append(1)
         self.i2c.write_block_data(self.REG_WRITE_RTC_YEAR, date)
 
+    def write_buzzer_volume(self, volume):
+        if 'buzzer' not in self.device.peripherals:
+            raise ValueError(f"Buzzer not supported for {self.device.name}")
+        self.i2c.write_byte_data(self.REG_WRITE_BUZZER_VOL, volume)
+
+    def write_buzzer_freq(self, tone):
+        if 'buzzer' not in self.device.peripherals:
+            raise ValueError(f"Buzzer not supported for {self.device.name}")
+        self.i2c.write_word_data(self.REG_WRITE_BUZZER_FEQ_L, tone)
+
     def buzzer_play_tone(self, tone, duration):
         '''
         tone, int, frequency of the tone
@@ -311,9 +321,9 @@ class SPC():
         '''
         if 'buzzer' not in self.device.peripherals:
             raise ValueError(f"Buzzer not supported for {self.device.name}")
-        self.i2c.write_word_data(self.REG_WRITE_BUZZER_FEQ_L, tone)
+        self.write_buzzer_tone(tone)
         time.sleep(duration)
-        self.i2c.write_word_data(self.REG_WRITE_BUZZER_FEQ_L, 0)
+        self.write_buzzer_tone(0)
 
     def set_buzzer_volume(self, volume):
         '''
@@ -321,7 +331,7 @@ class SPC():
         '''
         if 'buzzer' not in self.device.peripherals:
             raise ValueError(f"Buzzer not supported for {self.device.name}")
-        self.i2c.write_byte_data(self.REG_WRITE_BUZZER_VOL, volume)
+        self.write_buzzer_volume(volume)
 
     def get_buzzer_volume(self):
         if 'buzzer' not in self.device.peripherals:

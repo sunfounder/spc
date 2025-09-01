@@ -222,6 +222,11 @@ class SPC():
             raise ValueError(f"Power off percentage not supported for {self.device.name}")
         return self.i2c.read_byte_data(self.REG_READ_POWER_OFF_PERCENTAGE)
 
+    def read_buzzer_volume(self) -> int:
+        if 'buzzer' not in self.device.peripherals:
+            raise ValueError(f"Buzzer volume not supported for {self.device.name}")
+        return self.i2c.read_byte_data(self.REG_BUZZER_VOL)
+
     def _unpack_u16(self, data, reg):
         return data[reg+1] << 8 | data[reg]
 
@@ -321,19 +326,15 @@ class SPC():
         '''
         if 'buzzer' not in self.device.peripherals:
             raise ValueError(f"Buzzer not supported for {self.device.name}")
-        self.write_buzzer_tone(tone)
+        self.write_buzzer_freq(tone)
         time.sleep(duration)
-        self.write_buzzer_tone(0)
+        self.write_buzzer_freq(0)
 
     def set_buzzer_volume(self, volume):
         '''
         volume, int, 0-10
         '''
-        if 'buzzer' not in self.device.peripherals:
-            raise ValueError(f"Buzzer not supported for {self.device.name}")
         self.write_buzzer_volume(volume)
 
     def get_buzzer_volume(self):
-        if 'buzzer' not in self.device.peripherals:
-            raise ValueError(f"Buzzer not supported for {self.device.name}")
-        return self.i2c.read_byte_data(self.REG_BUZZER_VOL)
+        return self.read_buzzer_volume()
